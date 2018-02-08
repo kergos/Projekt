@@ -1,4 +1,4 @@
-from src.functions import *
+from src.testfunction import *
 print("Start Tutorial")
 
 array = [0, 1, 2, 3, 4, 5]
