@@ -75,10 +75,10 @@ def fileplotfunction(pathtofile):
         data = [row.split('  ') for row in data]  # removing blanks
         data.pop()                                # remove last useless Array in crv
 
-        x = [float(column[1]) for column in data]
-        y1 = [float(column[2]) for column in data]
-        y2 = [float(column[3]) for column in data]
-        y3 = [float(column[4]) for column in data]
+        x = [float(column[1]) for column in data]   #time
+        y1 = [float(column[2]) for column in data]  #VBackGate
+        y2 = [float(column[3]) for column in data]  #VDrain
+        y3 = [float(column[4]) for column in data]  #IDrain
 
         # string manipulation for naming purposes
         newstring = pathtofile.split('/')
@@ -109,30 +109,33 @@ def fileplotfunction(pathtofile):
                title=filename[:-4] + "__VBackgate")
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__VBackgate.png")
-
         plt.close(fig)
+
         fig, ax = plt.subplots()
-        #plt.clf
-
-
         ax.plot(x, y2)
         ax.set(xlabel='Time (s)', ylabel='VDrain (V)',
                title=filename[:-4] + "__VDrain")
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__VDrain.png")
-
         plt.close(fig)
-        fig, ax = plt.subplots()
-        #plt.clf()
 
+        fig, ax = plt.subplots()
         ax.plot(x, y3)
+        ax.set_yscale("log")
         ax.set(xlabel='Time (s)', ylabel='IDrain (I)',
                title=filename[:-4] + "__IDrain")
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__IDrain.png")
+        plt.close(fig)
 
-        #plt.clf() #clears figure
-        plt.close(fig) #closes window
+        fig, ax = plt.subplots()
+        ax.plot(y1, y3, 'r.')
+        ax.set_yscale("log")
+        ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)',
+               title=filename[:-4] + "__VBackgate_IDrain")
+        ax.grid()
+        fig.savefig(temppath + filename[:-4] + "__VBackgate_IDrain.png")
+        plt.close(fig)
 
 
 def filesystemplotfunction(relativepath):
