@@ -154,4 +154,4 @@ def filesystemplotfunction(relativepath):
     pool.map(fileplotfunction, filepaths)  # Multiprocess
     
     end_time = time.time()
-    print("Es wurden", count*3, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
+    print("Es wurden", count*4, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
