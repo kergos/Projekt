@@ -110,8 +110,10 @@ def fileplotfunction(pathtofile):
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__VBackgate.png")
 
-        #fig, ax = plt.subplots()
-        plt.clf
+        plt.close(fig)
+        fig, ax = plt.subplots()
+        #plt.clf
+
 
         ax.plot(x, y2)
         ax.set(xlabel='Time (s)', ylabel='VDrain (V)',
@@ -119,8 +121,9 @@ def fileplotfunction(pathtofile):
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__VDrain.png")
 
-        #fig, ax = plt.subplots()
-        plt.clf()
+        plt.close(fig)
+        fig, ax = plt.subplots()
+        #plt.clf()
 
         ax.plot(x, y3)
         ax.set(xlabel='Time (s)', ylabel='IDrain (I)',
@@ -128,22 +131,24 @@ def fileplotfunction(pathtofile):
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__IDrain.png")
 
-        plt.clf() #clears figure
+        #plt.clf() #clears figure
         plt.close(fig) #closes window
 
 
 def filesystemplotfunction(relativepath):
     path = relativepath
     count = 0
-    start_time = time.time()
-    print("running...")
-    pool = Pool(os.cpu_count())  # Use all the CPUs
-
+    filepaths = []
     for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
         # print(filenamerec)
-        pool.map(fileplotfunction,filenamerec) #Multiprocess
         #fileplotfunction(filenamerec)         #Single Process
+        filepaths.append(filenamerec)
         count = count+1
 
+    print("running...")
+    pool = Pool(os.cpu_count())  # Use all the CPUs
+    start_time = time.time()
+    pool.map(fileplotfunction, filepaths)  # Multiprocess
+    
     end_time = time.time()
     print("Es wurden", count*3, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
