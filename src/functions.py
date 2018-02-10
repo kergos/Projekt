@@ -3,7 +3,7 @@ import numpy as np
 import os
 import glob
 import time
-
+from multiprocessing import Pool
 
 def basicplotfunction():
     print("Start Plotting")
@@ -136,10 +136,13 @@ def filesystemplotfunction(relativepath):
     path = relativepath
     count = 0
     start_time = time.time()
+    print("running...")
+    pool = Pool(os.cpu_count())  # Use all the CPUs
 
     for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
         # print(filenamerec)
-        fileplotfunction(filenamerec)
+        pool.map(fileplotfunction,filenamerec) #Multiprocess
+        #fileplotfunction(filenamerec)         #Single Process
         count = count+1
 
     end_time = time.time()
