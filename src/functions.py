@@ -103,7 +103,11 @@ def fileplotfunction(pathtofile):
         temppath = os.path.join(temppath, dirname2)+"/"
         #print(temppath)
 
+
+
         fig, ax = plt.subplots()
+
+
         ax.plot(x, y1)
         ax.set(xlabel='Time (s)', ylabel='VBackGate (V)',
                title=filename[:-4] + "__VBackgate")
@@ -113,26 +117,31 @@ def fileplotfunction(pathtofile):
 
         fig, ax = plt.subplots()
         ax.plot(x, y2)
+        #ax.set_yscale("log")
         ax.set(xlabel='Time (s)', ylabel='VDrain (V)',
-               title=filename[:-4] + "__VDrain")
+               title=filename[:-4] + "__VDrain\n")
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__VDrain.png")
         plt.close(fig)
 
         fig, ax = plt.subplots()
         ax.plot(x, y3)
-        ax.set_yscale("log")
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
         ax.set(xlabel='Time (s)', ylabel='IDrain (I)',
-               title=filename[:-4] + "__IDrain")
+               title=filename[:-4] + "__IDrain\n")
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__IDrain.png")
         plt.close(fig)
 
         fig, ax = plt.subplots()
         ax.plot(y1, y3, 'r.')
-        ax.set_yscale("log")
+        if any(yvalues < 0 for yvalues in y3):
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        else:
+            ax.set_yscale("log")
+
         ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)',
-               title=filename[:-4] + "__VBackgate_IDrain")
+               title=filename[:-4] + "__VBackgate_IDrain\n")
         ax.grid()
         fig.savefig(temppath + filename[:-4] + "__VBackgate_IDrain.png")
         plt.close(fig)
@@ -149,9 +158,11 @@ def filesystemplotfunction(relativepath):
         count = count+1
 
     print("running...")
-    pool = Pool(os.cpu_count())  # Use all the CPUs
+    print("Es wurden ", count, "Messdaten gefunden.")
+    pool = Pool(os.cpu_count())  # Use all the CPUs available
+
     start_time = time.time()
     pool.map(fileplotfunction, filepaths)  # Multiprocess
-    
     end_time = time.time()
+
     print("Es wurden", count*4, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
