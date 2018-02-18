@@ -1,10 +1,13 @@
+from multiprocessing import Pool
+from bisect import *
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import glob
 import time
-from multiprocessing import Pool
 
+
+# tutorialfunction
 def basicplotfunction():
     print("Start Plotting")
 
@@ -25,6 +28,7 @@ def basicplotfunction():
     plt.show()
 
 
+# first Plot from File
 def basicfileplotfunction():
     with open("../../Batchelor-Arbeit/Messdaten/T27C/A1/MoS2_encapsulated_DevA1_IdVg_10Vs_Vd1V_27C_-20_20V.crv") as f:
         for i in range(6):      # starting at line 11 where plot data starts
@@ -64,6 +68,7 @@ def basicfileplotfunction():
     fig.savefig("../../Batchelor-Arbeit/Plots/T27C/A1_IDrain.png")
 
 
+# multiple plots from one .crv file and creating
 def fileplotfunction(pathtofile):
     if os.path.isfile(pathtofile):
         with open(pathtofile) as f:
@@ -80,15 +85,12 @@ def fileplotfunction(pathtofile):
         y2 = [float(column[3]) for column in data]  #VDrain
         y3 = [float(column[4]) for column in data]  #IDrain
 
-        # string manipulation for naming purposes
+        # string manipulation for naming purposes very static, needs workaround
         newstring = pathtofile.split('/')
         # print(newstring)
         dirname1 = newstring[4]
         dirname2 = newstring[5]
         filename = newstring[6]
-
-        #print(pathtofile)
-        #print(dirname1, dirname2, filename[:-4])
 
         temppath = "../../Batchelor-Arbeit/Plots/"
         
@@ -101,8 +103,6 @@ def fileplotfunction(pathtofile):
             os.makedirs(os.path.join(temppath, dirname2))
 
         temppath = os.path.join(temppath, dirname2)+"/"
-        #print(temppath)
-
 
 
         fig, ax = plt.subplots()
@@ -135,11 +135,11 @@ def fileplotfunction(pathtofile):
 
         fig, ax = plt.subplots()
         ax.plot(y1, y3, 'r.')
+
         if any(yvalues < 0 for yvalues in y3):
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
         else:
             ax.set_yscale("log")
-
         ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)',
                title=filename[:-4] + "__VBackgate_IDrain\n")
         ax.grid()
@@ -147,13 +147,14 @@ def fileplotfunction(pathtofile):
         plt.close(fig)
 
 
+# plotting every file in relativepath
 def filesystemplotfunction(relativepath):
     path = relativepath
     count = 0
     filepaths = []
     for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
         # print(filenamerec)
-        #fileplotfunction(filenamerec)         #Single Process
+        # fileplotfunction(filenamerec)         Single Process
         filepaths.append(filenamerec)
         count = count+1
 
@@ -166,3 +167,99 @@ def filesystemplotfunction(relativepath):
     end_time = time.time()
 
     print("Es wurden", count*4, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
+
+
+def extractvaluesfromfile(pathtofile):
+    if os.path.isfile(pathtofile):
+        with open(pathtofile) as f:
+            for i in range(6):                    # starting at line 11 where plot data starts
+                f.__next__()
+            data = f.read()
+
+        data = data.split('\n')                   # splitting seperate lines
+        data = [row.split('  ') for row in data]  # removing blanks
+        data.pop()                                # remove last useless Array in crv
+
+        vg = [float(column[2]) for column in data]  # VBackGate
+        id = [float(column[4]) for column in data]  # IDrain
+
+        #print("\nPath: "+pathtofile)
+
+        # get Imax/Imin factor
+        idfactor = max(id)/min(id)
+
+        # get treshold at approx 10⁻⁶ or mean value since ids are so different dont now if solution is applicable
+        meanid = sum(id)/len(id)
+        #print("mean value of id: ",meanid)
+        pos = bisect(id, meanid)
+        #print("bisect pos: ", pos)
+        if pos == len(vg):
+            #print("algorithm failed")
+            tempid = sorted(id)
+            tempvg = sorted(vg)
+            temppos = bisect(tempid, meanid)
+            vth1 = tempvg[temppos]
+        else:
+            vth1 = vg[pos]
+
+        # reverse list for vth2
+        id = list(reversed(id))
+        vg = list(reversed(vg))
+        pos = bisect(id, meanid)
+        vth2 = vg[pos]
+
+        hyswidth = abs(vth1-vth2)
+
+        returnlist = [vth1, idfactor, hyswidth]
+        return returnlist
+
+
+def comparedevices(directorypath, searchstrs):
+    if not os.path.exists(directorypath):
+        print("path does not exist")
+        exit(-1)
+    path = directorypath
+    filepaths = []
+    foundpaths = []
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
+        # print(filenamerec)
+        filepaths.append(filenamerec)
+
+    filepaths = sorted(filepaths)       # order list for pretty test printing purposes
+
+    for singlepaths in filepaths:
+        if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):  # checks for files with strings
+            print(singlepaths)                                                    # from searchstr and prints them
+            foundpaths.append(singlepaths)
+    if not foundpaths:
+        print("no filename which contains all keywords was found")
+        exit(-1)
+
+    newstring = foundpaths[0].split('/')
+    #print(newstring)
+    dirname1 = newstring[4]
+    devicename = newstring[5]
+    # filename = newstring[6]
+
+    temppath = "../../Batchelor-Arbeit/Compare-Plots/"
+
+    nameofnewfile = dirname1 + "_comparefile.crv"
+    i = 0
+    while os.path.isfile(temppath + nameofnewfile):
+        i += 1
+        nameofnewfile = dirname1 + "_comparefile%d.crv" % i
+
+    file = open(temppath + nameofnewfile, "w")
+    file.write("Devicename      threshold-voltage at ~10⁻⁶ drain(V)        Id_max/Id_min(1)         Vth1-Vth2(V)\n")
+    for devicepath in foundpaths:
+        # get values from devicepath
+        valuelist = extractvaluesfromfile(devicepath)
+        # get description of device
+        strpath = str(devicepath)
+        pos1 = strpath.find("IdVg_")
+        pos2 = strpath.find("_Vd")
+        # print("Slicetest: " + strpath[pos1+5:pos2])
+        print()
+        #file.write(devicepath.split('/')[5]+"_"+strpath[pos1+5:pos2]+" "+valuelist[0]+" "+valuelist[1]+" "+valuelist[2]+"\n")
+        file.write("%s_%s %e %e %e\n" % (devicepath.split('/')[5],strpath[pos1+5:pos2],valuelist[0],valuelist[1],valuelist[2]))
+    file.close()
