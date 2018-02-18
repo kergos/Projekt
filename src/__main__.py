@@ -2,7 +2,7 @@ from src.functions import *
 
 
 path = '../../Batchelor-Arbeit/Messdaten/'          # put relative path to  here
-dirpath = '../../Batchelor-Arbeit/Messdaten/T165C/'  # path to comparedevices
+dirpath = '../../Batchelor-Arbeit/Messdaten/T27C/'  # path to comparedevices
 searchstrs = ["-20_20V", "Vd05V", "dark"]
 
 comparedevices(dirpath, searchstrs)

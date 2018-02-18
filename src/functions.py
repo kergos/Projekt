@@ -183,31 +183,34 @@ def extractvaluesfromfile(pathtofile):
         vg = [float(column[2]) for column in data]  # VBackGate
         id = [float(column[4]) for column in data]  # IDrain
 
-        #print("\nPath: "+pathtofile)
+        # print("\nPath: "+pathtofile)
 
         # get Imax/Imin factor
         idfactor = max(id)/min(id)
 
         # get treshold at approx 10⁻⁶ or mean value since ids are so different dont now if solution is applicable
         meanid = sum(id)/len(id)
-        #print("mean value of id: ",meanid)
-        pos = bisect(id, meanid)
-        #print("bisect pos: ", pos)
-        if pos == len(vg):
-            #print("algorithm failed")
-            tempid = sorted(id)
-            tempvg = sorted(vg)
-            temppos = bisect(tempid, meanid)
-            vth1 = tempvg[temppos]
-        else:
-            vth1 = vg[pos]
 
-        # reverse list for vth2
-        id = list(reversed(id))
-        vg = list(reversed(vg))
-        pos = bisect(id, meanid)
-        vth2 = vg[pos]
+        #print("mean value of id: ", meanid)
 
+        #getting end of first sweep
+        endoffirstarray = vg.index(max(vg))
+        # print("first sweep index at: ", vg.index(max(vg)))
+        #splitting array in up and down sweep
+        idn1 = np.asarray(id[:endoffirstarray+1])
+        idn2 = np.asarray(id[endoffirstarray+1:])
+        vg1 = vg[:endoffirstarray+1]
+        vg2 = vg[endoffirstarray+1:]
+        pos1 = (np.abs(idn1 - meanid)).argmin()
+        pos2 = (np.abs(idn2 - meanid)).argmin()
+
+        # print("FIRST ARRAY NEAREST: ", idn1[pos1])
+        # print("SECOND ARRAY NEAREST: ", idn2[pos2])
+
+        vth1 = vg1[pos1]
+        vth2 = vg2[pos2]
+        # print("VTH1: ", vth1)
+        # print("VTH2: ", vth2)
         hyswidth = abs(vth1-vth2)
 
         returnlist = [vth1, idfactor, hyswidth]
@@ -250,16 +253,14 @@ def comparedevices(directorypath, searchstrs):
         nameofnewfile = dirname1 + "_comparefile%d.crv" % i
 
     file = open(temppath + nameofnewfile, "w")
-    file.write("Devicename      threshold-voltage at ~10⁻⁶ drain(V)        Id_max/Id_min(1)         Vth1-Vth2(V)\n")
+    file.write("Devicename      threshold-voltage at mean value drain(V)        Id_max/Id_min(1)         Vth1-Vth2(V)\n")
     for devicepath in foundpaths:
         # get values from devicepath
+        #print(devicepath)
         valuelist = extractvaluesfromfile(devicepath)
         # get description of device
         strpath = str(devicepath)
         pos1 = strpath.find("IdVg_")
         pos2 = strpath.find("_Vd")
-        # print("Slicetest: " + strpath[pos1+5:pos2])
-        print()
-        #file.write(devicepath.split('/')[5]+"_"+strpath[pos1+5:pos2]+" "+valuelist[0]+" "+valuelist[1]+" "+valuelist[2]+"\n")
         file.write("%s_%s %e %e %e\n" % (devicepath.split('/')[5],strpath[pos1+5:pos2],valuelist[0],valuelist[1],valuelist[2]))
     file.close()
