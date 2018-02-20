@@ -104,9 +104,7 @@ def fileplotfunction(pathtofile):
 
         temppath = os.path.join(temppath, dirname2)+"/"
 
-
         fig, ax = plt.subplots()
-
 
         ax.plot(x, y1)
         ax.set(xlabel='Time (s)', ylabel='VBackGate (V)',
@@ -211,9 +209,9 @@ def extractvaluesfromfile(pathtofile):
         vth2 = vg2[pos2]
         # print("VTH1: ", vth1)
         # print("VTH2: ", vth2)
-        hyswidth = abs(vth1-vth2)
+        #hyswidth = abs(vth1-vth2)
 
-        returnlist = [vth1, idfactor, hyswidth]
+        returnlist = [vth1, vth2, idfactor]
         return returnlist
 
 
@@ -253,7 +251,7 @@ def comparedevices(directorypath, searchstrs):
         nameofnewfile = dirname1 + "_comparefile%d.crv" % i
 
     file = open(temppath + nameofnewfile, "w")
-    file.write("Devicename      threshold-voltage at mean value drain(V)        Id_max/Id_min(1)         Vth1-Vth2(V)\n")
+    file.write("Devicename      threshold-voltage at mean value drain(V)        Vth2(V)     Id_max/Id_min(1)\n")
     for devicepath in foundpaths:
         # get values from devicepath
         #print(devicepath)
@@ -264,3 +262,38 @@ def comparedevices(directorypath, searchstrs):
         pos2 = strpath.find("_Vd")
         file.write("%s_%s %e %e %e\n" % (devicepath.split('/')[5],strpath[pos1+5:pos2],valuelist[0],valuelist[1],valuelist[2]))
     file.close()
+
+    with open(temppath + nameofnewfile) as f:
+        f.__next__()  # starting at line 2 where plot data starts
+        data = f.read()
+
+    data = data.split('\n')                   # splitting seperate lines
+    data = [row.split(' ') for row in data]  # removing blanks
+    data.pop()
+
+    # print(data)
+    x = [column[0] for column in data]          # Devices
+    y1 = [float(column[1]) for column in data]  # Vth1
+    y2 = [float(column[2]) for column in data]  # Vth2
+    y3 = [float(column[3]) for column in data]  # Idmax/Idmin
+
+    fig, ax = plt.subplots()
+    barwidth = 0.3
+    opacity = 0.4
+    error_config = {'ecolor': '0.3'}
+    index = np.arange(len(x))
+    ax.bar(index, y1, barwidth, alpha=opacity, color='b',
+                error_kw=error_config,
+                label='Vth1')
+    ax.bar(index+barwidth, y2, barwidth,  alpha=opacity, color='g',
+                error_kw=error_config,
+                label='Vth2')
+    ax.set_xticks(index + barwidth / 2)
+    ax.set_xticklabels(x)
+    ax.set(xlabel='Devices', ylabel='V_th',
+           title=nameofnewfile[:-4] + "\n")
+    ax.grid()
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(temppath + nameofnewfile[:-4] + "_Vth1_Vth2.png")
+    plt.close(fig)
