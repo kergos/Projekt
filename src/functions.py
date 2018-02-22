@@ -234,7 +234,7 @@ def comparedevices(directorypath, searchstrs):
             foundpaths.append(singlepaths)
     if not foundpaths:
         print("no filename which contains all keywords was found")
-        exit(-1)
+        return
 
     newstring = foundpaths[0].split('/')
     #print(newstring)
@@ -245,25 +245,28 @@ def comparedevices(directorypath, searchstrs):
     temppath = "../../Batchelor-Arbeit/Compare-Plots/"
 
     nameofnewfile = dirname1 + "_comparefile.crv"
+    """
     i = 0
     while os.path.isfile(temppath + nameofnewfile):
         i += 1
         nameofnewfile = dirname1 + "_comparefile%d.crv" % i
+    """
+    filenameadd = "_".join(searchstrs) + "_"
 
-    file = open(temppath + nameofnewfile, "w")
+    file = open(temppath + filenameadd + nameofnewfile , "w")
     file.write("Devicename      threshold-voltage at mean value drain(V)        Vth2(V)     Id_max/Id_min(1)\n")
     for devicepath in foundpaths:
         # get values from devicepath
-        #print(devicepath)
+        # print(devicepath)
         valuelist = extractvaluesfromfile(devicepath)
         # get description of device
         strpath = str(devicepath)
         pos1 = strpath.find("IdVg_")
         pos2 = strpath.find("_Vd")
-        file.write("%s_%s %e %e %e\n" % (devicepath.split('/')[5],strpath[pos1+5:pos2],valuelist[0],valuelist[1],valuelist[2]))
+        file.write("%s_%s %e %e %e\n" % (devicepath.split('/')[5], strpath[pos1+5:pos2], valuelist[0], valuelist[1], valuelist[2]))
     file.close()
 
-    with open(temppath + nameofnewfile) as f:
+    with open(temppath + filenameadd + nameofnewfile) as f:
         f.__next__()  # starting at line 2 where plot data starts
         data = f.read()
 
@@ -275,25 +278,70 @@ def comparedevices(directorypath, searchstrs):
     x = [column[0] for column in data]          # Devices
     y1 = [float(column[1]) for column in data]  # Vth1
     y2 = [float(column[2]) for column in data]  # Vth2
-    y3 = [float(column[3]) for column in data]  # Idmax/Idmin
+    y3 = [abs(float(column[3])) for column in data]  # Idmax/Idmin needs abs to show useable graphs
 
-    fig, ax = plt.subplots()
+    # Imax/Imin Plot
     barwidth = 0.3
-    opacity = 0.4
+    opacity = 1
     error_config = {'ecolor': '0.3'}
+    fig, ax = plt.subplots()
+    ax.set_yscale("log")
     index = np.arange(len(x))
-    ax.bar(index, y1, barwidth, alpha=opacity, color='b',
+    ax.set_xticks(index)
+    ax.set_xticklabels(x)
+    rects = ax.bar(index, y3, barwidth, alpha=opacity, color='orange',
+           error_kw=error_config)
+    ax.set(xlabel='Devices', ylabel='|Imax/Imin|',
+           title=nameofnewfile[:-4] + "\n")
+    ax.grid()
+    autolabel(rects, ax)
+
+    fig.savefig(temppath + filenameadd + nameofnewfile[:-4] + "_Imax_Imin.png")
+    plt.close(fig)
+
+    # Vth1_Vth2 Plot
+    fig, ax = plt.subplots()
+    index = np.arange(len(x))
+    rect1 = ax.bar(index, y1, barwidth, alpha=opacity, color='b',
                 error_kw=error_config,
                 label='Vth1')
-    ax.bar(index+barwidth, y2, barwidth,  alpha=opacity, color='g',
+    rect2 = ax.bar(index+barwidth, y2, barwidth,  alpha=opacity, color='g',
                 error_kw=error_config,
                 label='Vth2')
     ax.set_xticks(index + barwidth / 2)
     ax.set_xticklabels(x)
     ax.set(xlabel='Devices', ylabel='V_th',
            title=nameofnewfile[:-4] + "\n")
+    autolabel(rect1, ax)
+    autolabel(rect2, ax)
     ax.grid()
     ax.legend()
     fig.tight_layout()
-    fig.savefig(temppath + nameofnewfile[:-4] + "_Vth1_Vth2.png")
+    fig.savefig(temppath + filenameadd + nameofnewfile[:-4] + "_Vth1_Vth2.png")
     plt.close(fig)
+
+
+def comparedevicesinfolder(multipledirpath, searchstrs):
+    if not os.path.exists(multipledirpath):
+        print("path does not exist")
+        exit(-1)
+    subpaths = os.listdir(multipledirpath)
+    pathforfunction = []
+    for path in subpaths:
+        if path[0] is not ".":      # removes non existent "folders"
+            pathforfunction.append(os.path.join(multipledirpath,path))
+    # print(pathforfunction)
+    for path in pathforfunction:
+        comparedevices(path, searchstrs)
+
+
+def autolabel(rects, ax):
+    """
+    Attach a text label above each bar displaying its height
+    """
+    for rect in rects:
+        height = rect.get_height()
+        ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+                '%g' % height,
+                ha='center', va='bottom')
+
