@@ -82,8 +82,8 @@ def fileplotfunction(pathtofile):
 
         x = [float(column[1]) for column in data]   #time
         y1 = [float(column[2]) for column in data]  #VBackGate
-        y2 = [float(column[3]) for column in data]  #VDrain
-        y3 = [float(column[4]) for column in data]  #IDrain
+        # y2 = [float(column[3]) for column in data]  #VDrain
+        y3 = [abs(float(column[4])) for column in data]  #IDrain
 
         # string manipulation for naming purposes very static, needs workaround
         newstring = pathtofile.split('/')
@@ -104,6 +104,7 @@ def fileplotfunction(pathtofile):
 
         temppath = os.path.join(temppath, dirname2)+"/"
 
+        """
         fig, ax = plt.subplots()
 
         ax.plot(x, y1)
@@ -115,13 +116,12 @@ def fileplotfunction(pathtofile):
 
         fig, ax = plt.subplots()
         ax.plot(x, y2)
-        #ax.set_yscale("log")
         ax.set(xlabel='Time (s)', ylabel='VDrain (V)',
                title=filename[:-4] + "__VDrain\n")
         ax.grid()
         fig.savefig(temppath+filename[:-4]+"__VDrain.png")
         plt.close(fig)
-
+        """
         fig, ax = plt.subplots()
         ax.plot(x, y3)
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
@@ -134,10 +134,12 @@ def fileplotfunction(pathtofile):
         fig, ax = plt.subplots()
         ax.plot(y1, y3, 'r.')
 
+        """ useless code revisited since now all Id will be abs values
         if any(yvalues < 0 for yvalues in y3):
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
         else:
-            ax.set_yscale("log")
+        """
+        ax.set_yscale("log")
         ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)',
                title=filename[:-4] + "__VBackgate_IDrain\n")
         ax.grid()
@@ -167,40 +169,60 @@ def filesystemplotfunction(relativepath):
     print("Es wurden", count*4, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
 
 
+# multiple plots from one .crv file and creating, now with other format
+def secondfileplotfunction(pathtofile):
+    print(pathtofile)
+
+
+def secondfilesystemplotfunction(relativepath):
+    path = relativepath
+    filepaths = []
+    count = 0
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
+        print(filenamerec)
+        filepaths.append(filenamerec)
+        count += 1
+    print("Es gibt %ld Textdateien" % count)
+
+
 def extractvaluesfromfile(pathtofile):
     if os.path.isfile(pathtofile):
         with open(pathtofile) as f:
             for i in range(6):                    # starting at line 11 where plot data starts
+                if i == 2:
+                    timestring = f.readline()[13:33]
                 f.__next__()
             data = f.read()
-
+        #print(timestring)
         data = data.split('\n')                   # splitting seperate lines
         data = [row.split('  ') for row in data]  # removing blanks
         data.pop()                                # remove last useless Array in crv
 
         vg = [float(column[2]) for column in data]  # VBackGate
-        id = [float(column[4]) for column in data]  # IDrain
+        idr = [abs(float(column[4])) for column in data]  # IDrain abs
 
         # print("\nPath: "+pathtofile)
 
-        # get Imax/Imin factor
-        idfactor = max(id)/min(id)
+        # get Imax/Imin
+        tidr = np.array(idr)
+        idmax = np.max(tidr[np.nonzero(tidr)])
+        idmin = np.min(tidr[np.nonzero(tidr)])
 
-        # get treshold at approx 10⁻⁶ or mean value since ids are so different dont now if solution is applicable
-        meanid = sum(id)/len(id)
 
-        #print("mean value of id: ", meanid)
+        # get treshold at 10% of idr = vth1
+        threshid = 0.1*idmax
 
-        #getting end of first sweep
+
+        # getting end of first sweep
         endoffirstarray = vg.index(max(vg))
         # print("first sweep index at: ", vg.index(max(vg)))
-        #splitting array in up and down sweep
-        idn1 = np.asarray(id[:endoffirstarray+1])
-        idn2 = np.asarray(id[endoffirstarray+1:])
+        # splitting array in up and down sweep
+        idn1 = np.asarray(idr[:endoffirstarray+1])
+        idn2 = np.asarray(idr[endoffirstarray+1:])
         vg1 = vg[:endoffirstarray+1]
         vg2 = vg[endoffirstarray+1:]
-        pos1 = (np.abs(idn1 - meanid)).argmin()
-        pos2 = (np.abs(idn2 - meanid)).argmin()
+        pos1 = (np.abs(idn1 - threshid)).argmin()
+        pos2 = (np.abs(idn2 - threshid)).argmin()
 
         # print("FIRST ARRAY NEAREST: ", idn1[pos1])
         # print("SECOND ARRAY NEAREST: ", idn2[pos2])
@@ -209,9 +231,8 @@ def extractvaluesfromfile(pathtofile):
         vth2 = vg2[pos2]
         # print("VTH1: ", vth1)
         # print("VTH2: ", vth2)
-        #hyswidth = abs(vth1-vth2)
 
-        returnlist = [vth1, vth2, idfactor]
+        returnlist = [vth1, vth2, idmax, idmin, timestring]
         return returnlist
 
 
@@ -253,8 +274,8 @@ def comparedevices(directorypath, searchstrs):
     """
     filenameadd = "_".join(searchstrs) + "_"
 
-    file = open(temppath + filenameadd + nameofnewfile , "w")
-    file.write("Devicename      threshold-voltage at mean value drain(V)        Vth2(V)     Id_max/Id_min(1)\n")
+    file = open(temppath + filenameadd + nameofnewfile, "w")
+    file.write("Devicename     Vth1(V)        Vth2(V)     Id_max(1)   Id_min(1)     Timestamp\n")
     for devicepath in foundpaths:
         # get values from devicepath
         # print(devicepath)
@@ -263,7 +284,13 @@ def comparedevices(directorypath, searchstrs):
         strpath = str(devicepath)
         pos1 = strpath.find("IdVg_")
         pos2 = strpath.find("_Vd")
-        file.write("%s_%s %e %e %e\n" % (devicepath.split('/')[5], strpath[pos1+5:pos2], valuelist[0], valuelist[1], valuelist[2]))
+        # hardcoded "formating" of the comparefile
+        if len(devicepath.split('/')[5]+strpath[pos1 + 5:pos2])+1 > 7:
+            file.write("%s_%s %e %e %e %e %s\n" % (devicepath.split('/')[5], strpath[pos1 + 5:pos2],
+                                                   valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
+        else:
+            file.write("%s_%s\t %e %e %e %e %s\n" % (devicepath.split('/')[5], strpath[pos1+5:pos2],
+                                                     valuelist[0], valuelist[1], valuelist[2], valuelist[3],  valuelist[4]))
     file.close()
 
     with open(temppath + filenameadd + nameofnewfile) as f:
@@ -278,20 +305,40 @@ def comparedevices(directorypath, searchstrs):
     x = [column[0] for column in data]          # Devices
     y1 = [float(column[1]) for column in data]  # Vth1
     y2 = [float(column[2]) for column in data]  # Vth2
-    y3 = [abs(float(column[3])) for column in data]  # Idmax/Idmin needs abs to show useable graphs
+    y3 = [float(column[3]) for column in data]  # Idmax
+    y4 = [float(column[4]) for column in data]  # Idmin
 
-    # Imax/Imin Plot
+
     barwidth = 0.3
     opacity = 1
     error_config = {'ecolor': '0.3'}
+
+    # Imax/Imin Plot
+    # CONDITION 1: Imax/Imin has to be bigger than 10³ for measuring to be counted as valid
+    yifactor = [x / y for x, y in zip(y3, y4)]
+    validfactors = []
+    validdevices = []
+    validvth1 = []
+    validvth2 = []
+    i = 0
+    for factor in yifactor:
+        if factor > 1e3:
+            validfactors.append(factor)
+            validdevices.append(x[i])
+            validvth1.append(y1[i])
+            validvth2.append(y2[i])
+        i += 1
+    # print(yifactor)
+    # print(validfactors)
+    # print(validdevices)
     fig, ax = plt.subplots()
     ax.set_yscale("log")
-    index = np.arange(len(x))
+    index = np.arange(len(validdevices))
     ax.set_xticks(index)
-    ax.set_xticklabels(x)
-    rects = ax.bar(index, y3, barwidth, alpha=opacity, color='orange',
-           error_kw=error_config)
-    ax.set(xlabel='Devices', ylabel='|Imax/Imin|',
+    ax.set_xticklabels(validdevices)
+    rects = ax.bar(index, validfactors, barwidth, alpha=opacity, color='orange',
+                   error_kw=error_config)
+    ax.set(xlabel='Devices', ylabel='Imax/Imin',
            title=nameofnewfile[:-4] + "\n")
     ax.grid()
     autolabel(rects, ax)
@@ -301,15 +348,13 @@ def comparedevices(directorypath, searchstrs):
 
     # Vth1_Vth2 Plot
     fig, ax = plt.subplots()
-    index = np.arange(len(x))
-    rect1 = ax.bar(index, y1, barwidth, alpha=opacity, color='b',
-                error_kw=error_config,
-                label='Vth1')
-    rect2 = ax.bar(index+barwidth, y2, barwidth,  alpha=opacity, color='g',
-                error_kw=error_config,
-                label='Vth2')
+    index = np.arange(len(validdevices))
+    rect1 = ax.bar(index, validvth1, barwidth, alpha=opacity, color='b',
+                   error_kw=error_config, label='Vth1')
+    rect2 = ax.bar(index+barwidth, validvth2, barwidth,  alpha=opacity, color='g',
+                   error_kw=error_config, label='Vth2')
     ax.set_xticks(index + barwidth / 2)
-    ax.set_xticklabels(x)
+    ax.set_xticklabels(validdevices)
     ax.set(xlabel='Devices', ylabel='V_th',
            title=nameofnewfile[:-4] + "\n")
     autolabel(rect1, ax)
