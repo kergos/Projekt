@@ -12,5 +12,5 @@ searchstrs = ["-10_10V", "Vd05V", "dark"]
 # fileplotfunction("../../Batchelor-Arbeit/Messdaten/T27C/B2/MoS2_encapsulated_DevB2_IdVg_5Vs_Vd05V_27C_-20_20V_dark.crv")
 # filesystemplotfunction(path)  # only use when ready Takes on Average 10minutes
 
-# secondfileplotfunction("../../Batchelor-Arbeit/Messdaten2/chip1/g1/dev99/22C/IDVG/ch1_g1_dev99_idvg_ar_Vd5V.txt")
+#secondfileplotfunction("../../Batchelor-Arbeit/Messdaten2/chip2/g2/dev43/22C/IDVG/ch2_g2_dev4-3_ar_IdVg_Vd5V.txt")
 secondfilesystemplotfunction('../../Batchelor-Arbeit/Messdaten2/')

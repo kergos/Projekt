@@ -1,10 +1,11 @@
 from multiprocessing import Pool
-from bisect import *
+from textwrap import wrap
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import glob
 import time
+
 
 
 # tutorialfunction
@@ -166,23 +167,97 @@ def filesystemplotfunction(relativepath):
     pool.map(fileplotfunction, filepaths)  # Multiprocess
     end_time = time.time()
 
-    print("Es wurden", count*4, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
+    print("Es wurden", count*2, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
 
 
 # multiple plots from one .crv file and creating, now with other format
 def secondfileplotfunction(pathtofile):
-    print(pathtofile)
+    if os.path.isfile(pathtofile):
+        #print(pathtofile)
+        temppath = "../../Batchelor-Arbeit/Plots2/"
+        newstring = pathtofile.split('/')
+        newstring = newstring[4:]
+        with open(pathtofile) as f:                   # starting at line 2 where plot data starts
+            f.__next__()
+            data = f.read()
+        data = data.split('\n')  # splitting seperate lines
+        data = [row.split('  ') for row in data]  # removing blanks
+        data.pop()  # remove last useless Array in crv
+        # print(data)
+        try:
+            x = [float(column[0]) for column in data]        # time
+        except Exception:
+            with open(temppath+"error2.txt", "a") as f:
+                f.write("Fehler in "+pathtofile+"\n")
+            print("STRANGEFAIL")
+            # secondfileplotfunction(pathtofile)
+            return
+        # y1 = [float(column[1]) for column in data]     # VDrain
+        y2 = [float(column[2]) for column in data]       # VGate
+        y3 = [abs(float(column[3])) for column in data]       # IDrain
+
+        # print(newstring)
+
+        # print(temppath)
+        for pathpiece in newstring[:-1]:
+            # print(pathpiece)
+            temppath = os.path.join(temppath, pathpiece+"/")
+            if not os.path.exists(temppath):
+                os.makedirs(temppath)
+            # print(temppath)
+        # print(newstring[len(newstring)-1])
+
+        fig, ax = plt.subplots()
+        ax.plot(x, y3)
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        ax.set(xlabel='Time (s)', ylabel='IDrain (I)')
+        ax.grid()
+        title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
+        fig.tight_layout()
+        title.set_y(1.03)
+        fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__IDrain.png")
+        plt.close(fig)
+
+        fig, ax = plt.subplots()
+        ax.plot(y2, y3, 'r.')
+        # useless code revisited since now all Id will be abs values
+        #if any(yvalues < 0 for yvalues in y3):
+        #    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+        #else:
+        ax.set_yscale("log")
+        ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)')
+        ax.grid()
+        title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
+        fig.tight_layout()
+        title.set_y(1.03)
+        fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__VBackgate_IDrain.png")
+        plt.close(fig)
 
 
 def secondfilesystemplotfunction(relativepath):
     path = relativepath
     filepaths = []
+    validfilepaths = []
     count = 0
     for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
-        print(filenamerec)
+        #print(filenamerec)
         filepaths.append(filenamerec)
-        count += 1
-    print("Es gibt %ld Textdateien" % count)
+    # filtering logfiles for they are useless
+    for singlepath in filepaths:
+        if "logfile" not in singlepath:
+            print(singlepath)
+            validfilepaths.append(singlepath)
+            count += 1
+    #print(validfilepaths)
+    print("running...")
+    print("Es wurden ", count, "Messdaten gefunden.")
+    pool = Pool(os.cpu_count())  # Use all the CPUs available
+
+    start_time = time.time()
+    pool.map(secondfileplotfunction, validfilepaths)  # Multiprocess
+    end_time = time.time()
+
+    print("Es wurden", count * 2, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
 
 
 def extractvaluesfromfile(pathtofile):
