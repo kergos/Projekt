@@ -270,13 +270,8 @@ def comparedevices(directorypath, searchstrs):
         strpath = str(devicepath)
         pos1 = strpath.find("IdVg_")
         pos2 = strpath.find("_Vd")
-        # hardcoded "formating" of the comparefile
-        if len(devicepath.split('/')[5]+strpath[pos1 + 5:pos2])+1 > 7:
-            file.write("%s_%s %e %e %e %e %s\n" % (devicepath.split('/')[5], strpath[pos1 + 5:pos2],
+        file.write("%s_%s %e %e %e %e %s\n" % (devicepath.split('/')[5], strpath[pos1 + 5:pos2],
                                                    valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
-        else:
-            file.write("%s_%s\t %e %e %e %e %s\n" % (devicepath.split('/')[5], strpath[pos1+5:pos2],
-                                                     valuelist[0], valuelist[1], valuelist[2], valuelist[3],  valuelist[4]))
     file.close()
 
     with open(temppath + filenameadd + nameofnewfile) as f:
@@ -293,7 +288,6 @@ def comparedevices(directorypath, searchstrs):
     y2 = [float(column[2]) for column in data]  # Vth2
     y3 = [float(column[3]) for column in data]  # Idmax
     y4 = [float(column[4]) for column in data]  # Idmin
-
 
     barwidth = 0.3
     opacity = 1
@@ -362,6 +356,166 @@ def comparedevicesinfolder(multipledirpath, searchstrs):
     # print(pathforfunction)
     for path in pathforfunction:
         comparedevices(path, searchstrs)
+
+
+# extracting data type2
+def secondextractvaluesfromfile(pathtofile):
+    if os.path.isfile(pathtofile):
+        with open(pathtofile) as f:
+            f.__next__()
+            data = f.read()
+        data = data.split('\n')                   # splitting seperate lines
+        data = [row.split('  ') for row in data]  # removing blanks
+        data.pop()                                # remove last useless Array in crv
+
+        vg = [float(column[2]) for column in data]  # VBackGate
+        idr = [abs(float(column[3])) for column in data]  # IDrain abs
+
+        # print("\nPath: "+pathtofile)
+
+        # get Imax/Imin
+        tidr = np.array(idr)
+        idmax = np.max(tidr[np.nonzero(tidr)])
+        idmin = np.min(tidr[np.nonzero(tidr)])
+
+
+        # get treshold at 10% of idr = vth1
+        threshid = 0.1*idmax
+
+
+        # getting end of first sweep
+        endoffirstarray = vg.index(max(vg))
+        # print("first sweep index at: ", vg.index(max(vg)))
+        # splitting array in up and down sweep
+        idn1 = np.asarray(idr[:endoffirstarray+1])
+        idn2 = np.asarray(idr[endoffirstarray+1:])
+        vg1 = vg[:endoffirstarray+1]
+        vg2 = vg[endoffirstarray+1:]
+        pos1 = (np.abs(idn1 - threshid)).argmin()
+        pos2 = (np.abs(idn2 - threshid)).argmin()
+
+        # print("FIRST ARRAY NEAREST: ", idn1[pos1])
+        # print("SECOND ARRAY NEAREST: ", idn2[pos2])
+
+        vth1 = vg1[pos1]
+        vth2 = vg2[pos2]
+        # print("VTH1: ", vth1)
+        # print("VTH2: ", vth2)
+
+        returnlist = [vth1, vth2, idmax, idmin]
+        return returnlist
+
+
+# comparing devices type2
+def secondcomparedevices(directorypath, searchstrs, antisearch):
+    if not os.path.exists(directorypath):
+        print("path does not exist")
+        exit(-1)
+    path = directorypath
+    filepaths = []
+    foundpaths = []
+    secondfoundpaths = []
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
+        # print(filenamerec)
+        filepaths.append(filenamerec)
+
+    filepaths = sorted(filepaths)       # order list for pretty test printing purposes
+    for singlepaths in filepaths:
+        if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):  # checks for files with strings
+            # print(singlepaths)                                                    # from searchstr and prints them
+            if not any(anti in singlepaths for anti in antisearch):
+                foundpaths.append(singlepaths)
+                #print(singlepaths)
+    if not foundpaths:
+        print("no filename which contains all keywords was found")
+        return
+    #print(foundpaths)
+
+    nameofnewfile = "_".join(searchstrs) + "_Messdaten2_comparefile.crv"
+    temppath = "../../Batchelor-Arbeit/Compare-Plots2/"
+
+    foundpaths = sorted(foundpaths)
+    file = open(temppath + directorypath.split('/')[4] + "_no[" + "_".join(antisearch) + "]" + nameofnewfile, "w")
+    file.write("Devicename       Vth1(V)        Vth2(V)     Id_max(1)   Id_min(1)\n")
+    for devicepath in foundpaths:
+        # get values from devicepath
+        # print(devicepath)
+        valuelist = secondextractvaluesfromfile(devicepath)
+        file.write("%s %e %e %e %e\n" % (devicepath.split('/')[6],
+                                           valuelist[0], valuelist[1], valuelist[2], valuelist[3]))
+        print(devicepath)
+    file.close()
+    with open(temppath + directorypath.split('/')[4] + "_no[" + "_".join(antisearch) + "]" + nameofnewfile) as f:
+
+        f.__next__()  # starting at line 2 where plot data starts
+        data = f.read()
+
+    data = data.split('\n')                   # splitting seperate lines
+    data = [row.split(' ') for row in data]  # removing blanks
+    data.pop()
+
+    # print(data)
+    x = [column[0] for column in data]          # Devices
+    y1 = [float(column[1]) for column in data]  # Vth1
+    y2 = [float(column[2]) for column in data]  # Vth2
+    y3 = [float(column[3]) for column in data]  # Idmax
+    y4 = [float(column[4]) for column in data]  # Idmin
+
+    barwidth = 0.3
+    opacity = 1
+    error_config = {'ecolor': '0.3'}
+
+    # Imax/Imin Plot
+    # CONDITION 1: Imax/Imin has to be bigger than 10³ for measuring to be counted as valid
+    yifactor = [x / y for x, y in zip(y3, y4)]
+    validfactors = []
+    validdevices = []
+    validvth1 = []
+    validvth2 = []
+    i = 0
+    for factor in yifactor:
+        if factor > 1e3:
+            validfactors.append(factor)
+            validdevices.append(x[i])
+            validvth1.append(y1[i])
+            validvth2.append(y2[i])
+        i += 1
+    fig, ax = plt.subplots()
+    ax.set_yscale("log")
+    fig.set_size_inches(len(x), 10)
+    index = np.arange(len(validdevices))
+    ax.set_xticks(index)
+    ax.set_xticklabels(validdevices)
+    rects = ax.bar(index, validfactors, barwidth, alpha=opacity, color='orange',
+                   error_kw=error_config)
+    ax.set(xlabel='Devices', ylabel='Imax/Imin',
+           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.grid()
+    autolabel(rects, ax)
+
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]_Imax_Imin.png", bbox_inches='tight', dpi=300)
+    plt.close(fig)
+
+    # Vth1_Vth2 Plot
+    fig, ax = plt.subplots()
+    fig.set_size_inches(len(x), 10)
+    index = np.arange(len(validdevices))
+    rect1 = ax.bar(index, validvth1, barwidth, alpha=opacity, color='b',
+                   error_kw=error_config, label='Vth1')
+    rect2 = ax.bar(index+barwidth, validvth2, barwidth,  alpha=opacity, color='g',
+                   error_kw=error_config, label='Vth2')
+    ax.set_xticks(index + barwidth / 2)
+    ax.set_xticklabels(validdevices)
+    ax.set(xlabel='Devices', ylabel='V_th',
+           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    autolabel(rect1, ax)
+    autolabel(rect2, ax)
+    ax.grid()
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]_Vth1_Vth2.png", bbox_inches='tight',
+                dpi=300)
+    plt.close(fig)
 
 
 # multiple plots from one .crv file and creating type2
