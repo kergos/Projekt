@@ -5,6 +5,7 @@ import numpy as np
 import os
 import glob
 import time
+import re
 
 
 # tutorialfunction
@@ -431,21 +432,21 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
         return
     #print(foundpaths)
 
-    nameofnewfile = "_".join(searchstrs) + "_Messdaten2_comparefile.crv"
+    nameofnewfile = "_".join(searchstrs) + "_Messdaten2_comparefile"
     temppath = "../../Batchelor-Arbeit/Compare-Plots2/"
 
     foundpaths = sorted(foundpaths)
-    file = open(temppath + directorypath.split('/')[4] + "_no[" + "_".join(antisearch) + "]" + nameofnewfile, "w")
+    file = open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
     file.write("Devicename       Vth1(V)        Vth2(V)     Id_max(1)   Id_min(1)\n")
     for devicepath in foundpaths:
         # get values from devicepath
         # print(devicepath)
         valuelist = secondextractvaluesfromfile(devicepath)
-        file.write("%s %e %e %e %e\n" % (devicepath.split('/')[6],
+        file.write("%s %e %e %e %e\n" % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_"+devicepath.split('/')[6],
                                            valuelist[0], valuelist[1], valuelist[2], valuelist[3]))
         print(devicepath)
     file.close()
-    with open(temppath + directorypath.split('/')[4] + "_no[" + "_".join(antisearch) + "]" + nameofnewfile) as f:
+    with open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
 
         f.__next__()  # starting at line 2 where plot data starts
         data = f.read()
@@ -455,7 +456,9 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     data.pop()
 
     # print(data)
-    x = [column[0] for column in data]          # Devices
+    # x = [column[0] for column in data]          # Devices
+    x = ["\n".join(wrap(column[0], 5)) for column in data]          # Devices"\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60))
+    x.sort()
     y1 = [float(column[1]) for column in data]  # Vth1
     y2 = [float(column[2]) for column in data]  # Vth2
     y3 = [float(column[3]) for column in data]  # Idmax
@@ -493,7 +496,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.grid()
     autolabel(rects, ax)
 
-    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]_Imax_Imin.png", bbox_inches='tight', dpi=300)
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Imax_Imin.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
 
     # Vth1_Vth2 Plot
@@ -513,7 +517,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.grid()
     ax.legend()
     fig.tight_layout()
-    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]_Vth1_Vth2.png", bbox_inches='tight',
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Vth1_Vth2.png", bbox_inches='tight',
                 dpi=300)
     plt.close(fig)
 
@@ -529,16 +534,23 @@ def secondfileplotfunction(pathtofile):
             f.__next__()
             data = f.read()
         data = data.split('\n')  # splitting seperate lines
-        data = [row.split('  ') for row in data]  # removing blanks
+        datatemp = [row.split('  ') for row in data]  # removing blanks
+
+        # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
+        # will be 1 so it needs to be seperated by tabs
+        # only problem is that first data row gets axed but this is negligible
+        if len(datatemp[0]) > 1:
+            data = datatemp
+        else:
+            data = [row.split() for row in data]
         data.pop()  # remove last useless Array in crv
-        # print(data)
+        #print(data)
         try:
             x = [float(column[0]) for column in data]        # time
         except Exception:
             with open(temppath+"error2.txt", "a") as f:
                 f.write("Fehler in "+pathtofile+"\n")
             print("STRANGEFAIL")
-            # secondfileplotfunction(pathtofile)
             return
         # y1 = [float(column[1]) for column in data]     # VDrain
         y2 = [float(column[2]) for column in data]       # VGate
