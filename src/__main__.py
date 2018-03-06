@@ -15,6 +15,6 @@ searchstrs = ["-20_20V", "Vd05V", "dark"]
 
 #secondfilesystemplotfunction('../../Batchelor-Arbeit/Messdaten2/') # only use when ready Takes on Average 6minutes
 
-searchstr2 = ["Vd5V", "ar", "165C"]
-antisearch = ["logfile", "sweep"]
-secondcomparedevices('../../Batchelor-Arbeit/Messdaten2/chip2/', searchstr2, antisearch)
+searchstr2 = ["PBTI", "22C"]
+antisearch = ["logfile", "sweep", "baked"]
+secondcomparedevices('../../Batchelor-Arbeit/Messdaten2/', searchstr2, antisearch)

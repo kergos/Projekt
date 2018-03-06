@@ -366,9 +366,16 @@ def secondextractvaluesfromfile(pathtofile):
             f.__next__()
             data = f.read()
         data = data.split('\n')                   # splitting seperate lines
-        data = [row.split('  ') for row in data]  # removing blanks
-        data.pop()                                # remove last useless Array in crv
+        datatemp = [row.split('  ') for row in data]  # removing blanks
 
+        # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
+        # will be 1 so it needs to be seperated by tabs
+        # only problem is that first data row gets axed but this is negligible
+        if len(datatemp[0]) > 1:
+            data = datatemp
+        else:
+            data = [row.split() for row in data]
+        data.pop()  # remove last useless Array in crv
         vg = [float(column[2]) for column in data]  # VBackGate
         idr = [abs(float(column[3])) for column in data]  # IDrain abs
 
@@ -440,11 +447,10 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     file.write("Devicename       Vth1(V)        Vth2(V)     Id_max(1)   Id_min(1)\n")
     for devicepath in foundpaths:
         # get values from devicepath
-        # print(devicepath)
+        print(devicepath)
         valuelist = secondextractvaluesfromfile(devicepath)
         file.write("%s %e %e %e %e\n" % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_"+devicepath.split('/')[6],
                                            valuelist[0], valuelist[1], valuelist[2], valuelist[3]))
-        print(devicepath)
     file.close()
     with open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
 
