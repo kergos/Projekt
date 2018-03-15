@@ -2,10 +2,10 @@ from multiprocessing import Pool
 from textwrap import wrap
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.constants import k , e
 import os
 import glob
 import time
-import re
 
 
 # tutorialfunction
@@ -412,13 +412,42 @@ def secondextractvaluesfromfile(pathtofile):
         # print("VTH1: ", vth1)
         # print("VTH2: ", vth2)
 
-        # getting Vmin which is the x value at Imin+60% originally 10% but that was too low too get a good fit
-        idminplus = idmin * 1.6
+        # getting Vmin which is the x value at Imin+50% originally 10% but that was too low too get a good fit
+        idminplus = idmin * 1.5
         pos3 = (np.abs(idn2 - idminplus)).argmin()
         vmin = vg2[pos3]
+        """
         print("IDminneu: ", idmin)
         print("Idmin+", idminplus)
         print("Vmin ", vmin)
+        print("Vth1 ", vth1)
+        print("Vth2 ", vth2)
+        """
+        # Trying to get fit value
+        """
+        dataset["fit"] = np.polyfit(dataset['Vg'][dataset["minind"]:dataset["maxind"]],
+                                    np.log(abs(dataset['Id'][dataset["minind"]:dataset["maxind"]])), 1)
+
+        dataset["S2"] = 1 / dataset["fit"][0] * np.log(10)
+        print(dataset["S2"])
+        """
+        # get index from vmin and vth2
+        minind = vg.index(vmin)
+        maxind = vg.index(vth2)
+        # try to fit line from vmin to vth2
+        fitvalue = np.polyfit(vg[minind:maxind], np.log(idr[minind:maxind]), 1)
+        # slope for fit
+        slope = 1/fitvalue[0] * np.log(10)
+        # print("Steigung: ", slope)
+        # print("fitvalue: ", fitvalue)
+        # ~ plt.figure()
+        plt.ylabel(r'log$(I_\mathrm{D})$ [A]')
+        plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
+        plt.ylim(-18, -5)
+        plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'] / 2)])) / np.log(10), marker='o',
+                 markersize=10, color=Colors1[j], linestyle=' ', label=str(dataset['T']) + "K")
+        plt.plot(dataset['Vg'], (dataset['Vg'] * dataset["fit"][0] + dataset["fit"][1]) / np.log(10), color=Colors1[j])
+        plt.text(4, -17 + j, "S = " + "{:.3f}".format(dataset['S2']) + "V/dec.", color=Colors1[j])
 
         returnlist = [vth1, vth2, vmin, idmax, idmin]
         return returnlist
@@ -453,7 +482,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     temppath = "../../Batchelor-Arbeit/Compare-Plots2/"
 
     foundpaths = sorted(foundpaths)
-    file = open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
+    file = open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
     file.write("Devicename       Vth1(V)        Vth2(V)     Vmin(V)     Id_max(A)   Id_min(A)\n")
     for devicepath in foundpaths:
         # get values from devicepath
@@ -462,7 +491,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
         file.write("%s %e %e %e %e %e\n" % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_"+devicepath.split('/')[6],
                                          valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
     file.close()
-    with open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
+    with open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
 
         f.__next__()  # starting at line 2 where plot data starts
         data = f.read()
@@ -500,7 +529,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             validvth1.append(y1[i])
             validvth2.append(y2[i])
         i += 1
-
+    start_time = time.time()
     fig, ax = plt.subplots()
     ax.set_yscale("log")
     fig.set_size_inches(len(x), 10)
@@ -516,6 +545,17 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Imax_Imin.png", bbox_inches='tight', dpi=300)
+    plt.close(fig)
+
+    # Hystogramm over the Ifactors
+    fig, ax = plt.subplots()
+    ax.grid()
+    plt.hist(validfactors, bins='sqrt', density=True, facecolor='g', alpha=0.75)
+    # plt.hist(validfactors, int(len(validfactors)/3), density=True, facecolor='g', alpha=0.75)
+    ax.set(xlabel='Idmax/Idmin', ylabel='Probability',
+           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Imax_Imin_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
 
     # Vth1_Vth2 Plot
@@ -535,13 +575,14 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.grid()
     ax.legend()
     # avoiding strange left cannot >= right error from matplotlib
-    if index > 5:
+    if len(index) > 5:
         fig.tight_layout()
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vth1_Vth2.png", bbox_inches='tight',
                 dpi=300)
     plt.close(fig)
-
+    end_time = time.time()
+    print("Plot hat", end_time - start_time, "Sekunden gedauert")
 
 # multiple plots from one .crv file and creating type2
 def secondfileplotfunction(pathtofile):
@@ -570,15 +611,12 @@ def secondfileplotfunction(pathtofile):
         except Exception:
             with open(temppath+"error2.txt", "a") as f:
                 f.write("Fehler in "+pathtofile+"\n")
-            print("STRANGEFAIL")
+            print("failed to plot: "+pathtofile)
             return
         # y1 = [float(column[1]) for column in data]     # VDrain
         y2 = [float(column[2]) for column in data]       # VGate
         y3 = [abs(float(column[3])) for column in data]       # IDrain
 
-        # print(newstring)
-
-        # print(temppath)
         for pathpiece in newstring[:-1]:
             # print(pathpiece)
             temppath = os.path.join(temppath, pathpiece+"/")
@@ -600,10 +638,12 @@ def secondfileplotfunction(pathtofile):
 
         fig, ax = plt.subplots()
         ax.plot(y2, y3, 'r.')
-        # useless code revisited since now all Id will be abs values
+        # useless code since now all Id will be abs values
         #if any(yvalues < 0 for yvalues in y3):
         #    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
         #else:
+        # if wanted, you can set other x ticks here
+        #ax.xaxis.set_major_locator(ticker.MultipleLocator(2.5))
         ax.set_yscale("log")
         ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)')
         ax.grid()
@@ -612,6 +652,8 @@ def secondfileplotfunction(pathtofile):
         title.set_y(1.03)
         fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__VBackgate_IDrain.png")
         plt.close(fig)
+    else:
+        print("File not found")
 
 
 # plotting every file in relativepath type2
