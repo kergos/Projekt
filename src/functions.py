@@ -379,19 +379,19 @@ def secondextractvaluesfromfile(pathtofile):
         vg = [float(column[2]) for column in data]  # VBackGate
         idr = [abs(float(column[3])) for column in data]  # IDrain abs
 
-        # print("\nPath: "+pathtofile)
 
         # get Imax/Imin
         tidr = np.array(idr)
         idmax = np.max(tidr[np.nonzero(tidr)])
-        idmin = np.min(tidr[np.nonzero(tidr)])
+        # minimum value wrong because of too high measuring resolution
+        # idmin = np.min(tidr[np.nonzero(tidr)])
+        # now it uses the last element in the crv which should be the lowest because of hysteresis
+        idmin = idr[-1]
 
+        # first we would get treshold at 10% of idr = vth1 but because of mos2-characteristics we now take only 1%
+        threshid = 0.01*idmax
 
-        # get treshold at 10% of idr = vth1
-        threshid = 0.1*idmax
-
-
-        # getting end of first sweep
+        # getting end of first sweep max finds the index of the first sweep maximum
         endoffirstarray = vg.index(max(vg))
         # print("first sweep index at: ", vg.index(max(vg)))
         # splitting array in up and down sweep
@@ -399,6 +399,8 @@ def secondextractvaluesfromfile(pathtofile):
         idn2 = np.asarray(idr[endoffirstarray+1:])
         vg1 = vg[:endoffirstarray+1]
         vg2 = vg[endoffirstarray+1:]
+        # takes the abs between all values in the sweep and takes the smallest one and returns its index,
+        # the smalles abs value stands for the smallest difference
         pos1 = (np.abs(idn1 - threshid)).argmin()
         pos2 = (np.abs(idn2 - threshid)).argmin()
 
@@ -410,7 +412,15 @@ def secondextractvaluesfromfile(pathtofile):
         # print("VTH1: ", vth1)
         # print("VTH2: ", vth2)
 
-        returnlist = [vth1, vth2, idmax, idmin]
+        # getting Vmin which is the x value at Imin+60% originally 10% but that was too low too get a good fit
+        idminplus = idmin * 1.6
+        pos3 = (np.abs(idn2 - idminplus)).argmin()
+        vmin = vg2[pos3]
+        print("IDminneu: ", idmin)
+        print("Idmin+", idminplus)
+        print("Vmin ", vmin)
+
+        returnlist = [vth1, vth2, vmin, idmax, idmin]
         return returnlist
 
 
@@ -444,13 +454,13 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 
     foundpaths = sorted(foundpaths)
     file = open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
-    file.write("Devicename       Vth1(V)        Vth2(V)     Id_max(1)   Id_min(1)\n")
+    file.write("Devicename       Vth1(V)        Vth2(V)     Vmin(V)     Id_max(A)   Id_min(A)\n")
     for devicepath in foundpaths:
         # get values from devicepath
         print(devicepath)
         valuelist = secondextractvaluesfromfile(devicepath)
-        file.write("%s %e %e %e %e\n" % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_"+devicepath.split('/')[6],
-                                           valuelist[0], valuelist[1], valuelist[2], valuelist[3]))
+        file.write("%s %e %e %e %e %e\n" % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_"+devicepath.split('/')[6],
+                                         valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
     file.close()
     with open(temppath + directorypath.split('/')[4] + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
 
@@ -467,8 +477,9 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     x.sort()
     y1 = [float(column[1]) for column in data]  # Vth1
     y2 = [float(column[2]) for column in data]  # Vth2
-    y3 = [float(column[3]) for column in data]  # Idmax
-    y4 = [float(column[4]) for column in data]  # Idmin
+    y3 = [float(column[4]) for column in data]  # Idmax
+    y4 = [float(column[5]) for column in data]  # Idmin
+    y5 = [float(column[3]) for column in data]  # Vmin
 
     barwidth = 0.3
     opacity = 1
@@ -489,6 +500,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             validvth1.append(y1[i])
             validvth2.append(y2[i])
         i += 1
+
     fig, ax = plt.subplots()
     ax.set_yscale("log")
     fig.set_size_inches(len(x), 10)
@@ -522,7 +534,9 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     autolabel(rect2, ax)
     ax.grid()
     ax.legend()
-    fig.tight_layout()
+    # avoiding strange left cannot >= right error from matplotlib
+    if index > 5:
+        fig.tight_layout()
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vth1_Vth2.png", bbox_inches='tight',
                 dpi=300)
