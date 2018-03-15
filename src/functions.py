@@ -2,11 +2,11 @@ from multiprocessing import Pool
 from textwrap import wrap
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.constants import k , e
+from scipy.constants import k, e
 import os
 import glob
 import time
-
+import random
 
 # tutorialfunction
 def basicplotfunction():
@@ -381,6 +381,7 @@ def secondextractvaluesfromfile(pathtofile):
 
 
         # get Imax/Imin
+        tvg = np.array(vg)
         tidr = np.array(idr)
         idmax = np.max(tidr[np.nonzero(tidr)])
         # minimum value wrong because of too high measuring resolution
@@ -423,33 +424,33 @@ def secondextractvaluesfromfile(pathtofile):
         print("Vth1 ", vth1)
         print("Vth2 ", vth2)
         """
-        # Trying to get fit value
-        """
-        dataset["fit"] = np.polyfit(dataset['Vg'][dataset["minind"]:dataset["maxind"]],
-                                    np.log(abs(dataset['Id'][dataset["minind"]:dataset["maxind"]])), 1)
-
-        dataset["S2"] = 1 / dataset["fit"][0] * np.log(10)
-        print(dataset["S2"])
-        """
         # get index from vmin and vth2
         minind = vg.index(vmin)
         maxind = vg.index(vth2)
+
         # try to fit line from vmin to vth2
         fitvalue = np.polyfit(vg[minind:maxind], np.log(idr[minind:maxind]), 1)
         # slope for fit
         slope = 1/fitvalue[0] * np.log(10)
+
         # print("Steigung: ", slope)
         # print("fitvalue: ", fitvalue)
-        # ~ plt.figure()
-        plt.ylabel(r'log$(I_\mathrm{D})$ [A]')
-        plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
-        plt.ylim(-18, -5)
-        plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'] / 2)])) / np.log(10), marker='o',
-                 markersize=10, color=Colors1[j], linestyle=' ', label=str(dataset['T']) + "K")
-        plt.plot(dataset['Vg'], (dataset['Vg'] * dataset["fit"][0] + dataset["fit"][1]) / np.log(10), color=Colors1[j])
-        plt.text(4, -17 + j, "S = " + "{:.3f}".format(dataset['S2']) + "V/dec.", color=Colors1[j])
 
-        returnlist = [vth1, vth2, vmin, idmax, idmin]
+        # getting Temperature from path
+        pathlist = pathtofile.split("/")
+        T = pathlist[7][:-1]
+        bakestat = "_notbkd"
+        if "baked" in pathtofile:
+            bakestat = "_bkd"
+            T = pathlist[7][:-7]
+        # C° + 273.15 = Kelvin
+        T = (int(T) + 273.15)
+        if T > 325.15:
+            bakestat = ""
+        slim = T * k / e * np.log(10)
+        strindex = pathlist[9].find("Vd")
+        dataset = (dict(T=T, Vg=tvg, Id=tidr, S2=slope, Slim=slim, Fit=fitvalue, Baked=bakestat, Device=pathlist[6], Vd=pathlist[9][strindex:-4]))
+        returnlist = [vth1, vth2, vmin, idmax, idmin, dataset]
         return returnlist
 
 
@@ -461,7 +462,6 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     path = directorypath
     filepaths = []
     foundpaths = []
-    secondfoundpaths = []
     for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
         # print(filenamerec)
         filepaths.append(filenamerec)
@@ -472,11 +472,11 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             # print(singlepaths)                                                    # from searchstr and prints them
             if not any(anti in singlepaths for anti in antisearch):
                 foundpaths.append(singlepaths)
-                #print(singlepaths)
+                # print(singlepaths)
     if not foundpaths:
         print("no filename which contains all keywords was found")
         return
-    #print(foundpaths)
+    # print(foundpaths)
 
     nameofnewfile = "_".join(searchstrs) + "_Messdaten2_comparefile"
     temppath = "../../Batchelor-Arbeit/Compare-Plots2/"
@@ -488,11 +488,12 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
         # get values from devicepath
         print(devicepath)
         valuelist = secondextractvaluesfromfile(devicepath)
-        file.write("%s %e %e %e %e %e\n" % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_"+devicepath.split('/')[6],
-                                         valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
+        file.write("%s %e %e %e %e %e\n"
+                   % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_" + devicepath.split('/')[6],
+                      valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
     file.close()
-    with open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
 
+    with open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
         f.__next__()  # starting at line 2 where plot data starts
         data = f.read()
 
@@ -583,6 +584,83 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     plt.close(fig)
     end_time = time.time()
     print("Plot hat", end_time - start_time, "Sekunden gedauert")
+
+
+# plotting fits
+def plotfit(datasets, searchstrs):
+    plt.figure()
+    path = "../../Batchelor-Arbeit/Fit-Plots2/"
+    t = []
+    s2 = []
+    slim = []
+
+    for j, dataset in enumerate(datasets):
+        t.append(dataset['T'])
+        s2.append(dataset['S2'])
+        slim.append(dataset['Slim'])
+
+        # get random color
+        rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
+        plt.ylabel(r'log$(I_\mathrm{D})$ [A]')
+        plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
+        plt.ylim(-11, -1)
+        plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'])])) / np.log(10), marker='.',
+                 markersize=5, color=rcolor, linestyle=' ', label=dataset['Device'] +"_"+ dataset['Vd'] +"_" + str(dataset['T']) + "K" + dataset['Baked'])
+        plt.plot(dataset['Vg'], (dataset['Vg'] * dataset["Fit"][0] + dataset["Fit"][1]) / np.log(10), color=rcolor)
+        plt.text(-4,-13-j , "S = " + "{:.3f}".format(dataset['S2']) + "V/dec.", color=rcolor)
+
+    legend = plt.legend(loc=2, bbox_to_anchor=(1.05, 1.15), prop={'size': 14}, borderpad=0.4,
+                        labelspacing=0.1)
+    plt.xlim(-15, 20)
+    plt.ylim(-11, -1)
+    plt.savefig(path + "_".join(searchstrs) + "_IdVg_all.pdf", bbox_inches='tight')
+
+    plt.figure()
+    plt.ylabel(r'S [V/dec.]')
+    plt.xlabel(r'T [K]')
+    plt.plot(t, s2, color="#990000", marker='x', markersize=10, markeredgewidth=2)
+    plt.plot(t, slim, color="#000099", marker='x', markersize=10, markeredgewidth=2)
+    ax = plt.gca()
+    ax.set_yscale('log')
+    plt.savefig(path + "_".join(searchstrs) + "_S_T_log.pdf", bbox_inches='tight')
+
+    plt.figure()
+    plt.ylabel(r'S [V/dec.]')
+    plt.xlabel(r'T [K]')
+    plt.plot(t, s2, color="#990000", marker='x', markersize=10, markeredgewidth=2)
+    plt.plot(t, slim, color="#000099", marker='x', markersize=10, markeredgewidth=2)
+    ax = plt.gca()
+    # ax.text(100, 1, " Cont.")
+    plt.savefig(path + "_".join(searchstrs) + "_S_T_ar.pdf", bbox_inches='tight')
+
+
+# fitting devices type2
+def secondfit(directorypath, searchstrs, antisearch):
+    if not os.path.exists(directorypath):
+        print("path does not exist")
+        exit(-1)
+    path = directorypath
+    filepaths = []
+    foundpaths = []
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
+        filepaths.append(filenamerec)
+    filepaths = sorted(filepaths)
+    for singlepaths in filepaths:
+        if any(singlesearchstr in singlepaths for singlesearchstr in searchstrs):
+            if not any(anti in singlepaths for anti in antisearch):
+                foundpaths.append(singlepaths)
+    if not foundpaths:
+        print("no filename which contains all keywords was found")
+        return
+    foundpaths = sorted(foundpaths)
+    datasets = []
+
+    for devicepath in foundpaths:
+        print(devicepath)
+        valuelist = secondextractvaluesfromfile(devicepath)
+        datasets.append(valuelist[5])
+    plotfit(datasets, searchstrs)
+
 
 # multiple plots from one .crv file and creating type2
 def secondfileplotfunction(pathtofile):
@@ -683,9 +761,6 @@ def secondfilesystemplotfunction(relativepath):
     print("Es wurden", count * 2, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
 
 
-
-
-
 def autolabel(rects, ax):
     """
     Attach a text label above each bar displaying its height
@@ -696,3 +771,6 @@ def autolabel(rects, ax):
                 '%g' % height,
                 ha='center', va='bottom')
 
+
+def randint():
+    return random.randint(0, 255)
