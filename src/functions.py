@@ -173,13 +173,14 @@ def filesystemplotfunction(relativepath):
 # extracting values from file
 def extractvaluesfromfile(pathtofile):
     if os.path.isfile(pathtofile):
+        timestring = ""
         with open(pathtofile) as f:
             for i in range(6):                    # starting at line 11 where plot data starts
                 if i == 2:
                     timestring = f.readline()[13:33]
                 f.__next__()
             data = f.read()
-        #print(timestring)
+        # print(timestring)
         data = data.split('\n')                   # splitting seperate lines
         data = [row.split('  ') for row in data]  # removing blanks
         data.pop()                                # remove last useless Array in crv
@@ -379,7 +380,6 @@ def secondextractvaluesfromfile(pathtofile):
         vg = [float(column[2]) for column in data]  # VBackGate
         idr = [abs(float(column[3])) for column in data]  # IDrain abs
 
-
         # get Imax/Imin
         tvg = np.array(vg)
         tidr = np.array(idr)
@@ -448,8 +448,14 @@ def secondextractvaluesfromfile(pathtofile):
         if T > 325.15:
             bakestat = ""
         slim = T * k / e * np.log(10)
+        # Calculate Ct cox = epser/thickness
+        cox = 3.9/25e-9
+        # slope/slim = (ct+cox)/cox
+        ct = ((slope/slim)*cox)-cox
+        # Get Vd from path
         strindex = pathlist[9].find("Vd")
-        dataset = (dict(T=T, Vg=tvg, Id=tidr, S2=slope, Slim=slim, Fit=fitvalue, Baked=bakestat, Device=pathlist[6], Vd=pathlist[9][strindex:-4]))
+        dataset = (dict(T=T, Vg=tvg, Id=tidr, S2=slope, Slim=slim, Fit=fitvalue, Baked=bakestat, Device=pathlist[6],
+                        Vd=pathlist[9][strindex:-4], Ct=ct))
         returnlist = [vth1, vth2, vmin, idmax, idmin, dataset]
         return returnlist
 
@@ -483,14 +489,15 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 
     foundpaths = sorted(foundpaths)
     file = open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
-    file.write("Devicename       Vth1(V)        Vth2(V)     Vmin(V)     Id_max(A)   Id_min(A)\n")
+    file.write("Devicename       Vth1(V)        Vth2(V)     Vmin(V)     Id_max(A)    Id_min(A)    Gradient[V/dec]    "
+               "Capacity[F]\n")
     for devicepath in foundpaths:
         # get values from devicepath
         print(devicepath)
         valuelist = secondextractvaluesfromfile(devicepath)
-        file.write("%s %e %e %e %e %e\n"
+        file.write("%s %e %e %e %e %e %e %e\n"
                    % (devicepath.split('/')[4]+"_"+devicepath.split('/')[5]+"_" + devicepath.split('/')[6],
-                      valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4]))
+                      valuelist[0], valuelist[1], valuelist[2], valuelist[3], valuelist[4], valuelist[5]['S2'], valuelist[5]['Ct']))
     file.close()
 
     with open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv") as f:
@@ -530,6 +537,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             validvth1.append(y1[i])
             validvth2.append(y2[i])
         i += 1
+    # time measuring start
     start_time = time.time()
     fig, ax = plt.subplots()
     ax.set_yscale("log")
@@ -551,10 +559,19 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     # Hystogramm over the Ifactors
     fig, ax = plt.subplots()
     ax.grid()
-    plt.hist(validfactors, bins='sqrt', density=True, facecolor='g', alpha=0.75)
-    # plt.hist(validfactors, int(len(validfactors)/3), density=True, facecolor='g', alpha=0.75)
+    # Get Probability Density Function
+    mean = np.mean(validfactors)
+    var = np.var(validfactors)
+    pdf = []
+    validfactors = sorted(validfactors)
+    for xi in validfactors:
+        pdf.append(1/(np.sqrt(2*np.pi*var))*np.exp(-np.power((xi-mean), 2)/(2*var)))
+    ax.plot(validfactors, pdf, '-.')
+    # now histogramm
+    plt.hist(validfactors, bins='auto', density=True, facecolor='orange', alpha=0.75)
     ax.set(xlabel='Idmax/Idmin', ylabel='Probability',
            title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set_xscale("log")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Imax_Imin_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -582,6 +599,47 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
                 + "_".join(antisearch) + "]_Vth1_Vth2.png", bbox_inches='tight',
                 dpi=300)
     plt.close(fig)
+
+    # Hystogramm over Vth2
+    fig, ax = plt.subplots()
+    ax.grid()
+    # Get Probability Density Function
+    mean = np.mean(validvth2)
+    var = np.var(validvth2)
+    pdf = []
+    validvth2 = sorted(validvth2)
+    for xi in validvth2:
+        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
+    ax.plot(validvth2, pdf, '-.')
+    # now histogramm
+    plt.hist(validvth2, bins='auto', density=True, facecolor='g', alpha=0.75)
+    ax.set(xlabel='Vth2', ylabel='Probability',
+           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Vth2_Histogram.png", bbox_inches='tight', dpi=300)
+    plt.close(fig)
+
+    # Hystogramm over Vthdelta
+    fig, ax = plt.subplots()
+    ax.grid()
+    # Get Probability Density Function
+    vthdelta = [abs(a-b) for a, b in zip(validvth1, validvth2)]
+    mean = np.mean(vthdelta)
+    var = np.var(vthdelta)
+    pdf = []
+    vthdelta = sorted(vthdelta)
+    for xi in vthdelta:
+        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
+    ax.plot(vthdelta, pdf, '-.')
+    # now histogramm
+    plt.hist(vthdelta, bins='auto', density=True, facecolor='g', alpha=0.75)
+    ax.set(xlabel='Vth2', ylabel='Probability',
+           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
+    plt.close(fig)
+
+    # time measuring end
     end_time = time.time()
     print("Plot hat", end_time - start_time, "Sekunden gedauert")
 
@@ -605,12 +663,11 @@ def plotfit(datasets, searchstrs):
         plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
         plt.ylim(-11, -1)
         plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'])])) / np.log(10), marker='.',
-                 markersize=5, color=rcolor, linestyle=' ', label=dataset['Device'] +"_"+ dataset['Vd'] +"_" + str(dataset['T']) + "K" + dataset['Baked'])
+                 markersize=5, color=rcolor, linestyle=' ', label=dataset['Device'] + "_" + dataset['Vd'] + "_" + str(dataset['T']) + "K" + dataset['Baked'])
         plt.plot(dataset['Vg'], (dataset['Vg'] * dataset["Fit"][0] + dataset["Fit"][1]) / np.log(10), color=rcolor)
-        plt.text(-4,-13-j , "S = " + "{:.3f}".format(dataset['S2']) + "V/dec.", color=rcolor)
+        plt.text(-4, -13-j, "S = " + "{:.3f}".format(dataset['S2']) + "V/dec.", color=rcolor)
 
-    legend = plt.legend(loc=2, bbox_to_anchor=(1.05, 1.15), prop={'size': 14}, borderpad=0.4,
-                        labelspacing=0.1)
+    plt.legend(loc=2, bbox_to_anchor=(1.05, 1.15), prop={'size': 14}, borderpad=0.4, labelspacing=0.1)
     plt.xlim(-15, 20)
     plt.ylim(-11, -1)
     plt.savefig(path + "_".join(searchstrs) + "_IdVg_all.pdf", bbox_inches='tight')
