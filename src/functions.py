@@ -449,7 +449,7 @@ def secondextractvaluesfromfile(pathtofile):
             bakestat = ""
         slim = T * k / e * np.log(10)
         # Calculate Ct cox = epser/thickness
-        cox = 3.9/25e-9
+        cox = 3.9/90e-9
         # slope/slim = (ct+cox)/cox
         ct = ((slope/slim)*cox)-cox
         # Get Vd from path
@@ -516,7 +516,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     y2 = [float(column[2]) for column in data]  # Vth2
     y3 = [float(column[4]) for column in data]  # Idmax
     y4 = [float(column[5]) for column in data]  # Idmin
-    y5 = [float(column[3]) for column in data]  # Vmin
+    y6 = [float(column[6]) for column in data]  # Gradient
 
     barwidth = 0.3
     opacity = 1
@@ -529,6 +529,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     validdevices = []
     validvth1 = []
     validvth2 = []
+    validgrad = []
     i = 0
     for factor in yifactor:
         if factor > 1e3:
@@ -536,6 +537,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             validdevices.append(x[i])
             validvth1.append(y1[i])
             validvth2.append(y2[i])
+            validgrad.append(y6[i])
         i += 1
     # time measuring start
     start_time = time.time()
@@ -638,6 +640,26 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
+
+    # Hystogramm over Gradient
+    fig, ax = plt.subplots()
+    ax.grid()
+    # Get Probability Density Function
+    mean = np.mean(validgrad)
+    var = np.var(validgrad)
+    pdf = []
+    validgrad = sorted(validgrad)
+    for xi in validgrad:
+        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
+    ax.plot(validgrad, pdf, '-.')
+    # now histogramm
+    plt.hist(validgrad, bins='auto', density=True, facecolor='g', alpha=0.75)
+    ax.set(xlabel='Gradient [V/dec]', ylabel='Probability',
+           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Gradient_Histogram.png", bbox_inches='tight', dpi=300)
+    plt.close(fig)
+
 
     # time measuring end
     end_time = time.time()

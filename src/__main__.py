@@ -18,10 +18,12 @@ searchstrs = ["-20_20V", "Vd05V", "dark"]
 # comparedevicesinfolder(multipledirpath, searchstrs)
 
 
-searchstr2 = ["22C", "Vd5V"]
-antisearch = ["logfile", "sweep", "baked"]
-secondcomparedevices("../../Batchelor-Arbeit/Messdaten2/", searchstr2, antisearch)
-# removed condition that all searchstr must be in path for multiple device handling
-searchstr3 = ["dev99"]
+searchstr2 = ["22C", "Vd5V", "4um", "baked"]
+antisearch = ["logfile", "sweep"]
+secondcomparedevices("../../Batchelor-Arbeit/Messdaten2_lengthsorted/", searchstr2, antisearch)
+
+
+# removed condition that all searchstr must be in path for multiple device handling for secondfit
+searchstr3 = ["dev66"]
 antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis", "Vd001", "Vd01", "Vd1", "Vd3"]
 # secondfit("../../Batchelor-Arbeit/Messdaten2/chip1/g1/", searchstr3, antisearch2)
