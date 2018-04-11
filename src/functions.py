@@ -635,7 +635,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(vthdelta, pdf, '-.')
     # now histogramm
     plt.hist(vthdelta, bins='auto', density=True, facecolor='g', alpha=0.75)
-    ax.set(xlabel='Vth2', ylabel='Probability',
+    ax.set(xlabel='Vthdelta', ylabel='Probability',
            title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
