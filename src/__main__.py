@@ -18,7 +18,7 @@ searchstrs = ["-20_20V", "Vd05V", "dark"]
 # comparedevicesinfolder(multipledirpath, searchstrs)
 
 
-searchstr2 = ["22C", "1um", "IDVG", "Vd3V"]     #alles 3v noch duan
+searchstr2 = ["22C", "1um", "IDVG", "Vd3V"]     #alles 3v noch duan dann gut
 antisearch = ["logfile", "sweep", "baked"]
 secondcomparedevices("../../Batchelor-Arbeit/Messdaten2_lengthsorted/", searchstr2, antisearch)
 
