@@ -704,7 +704,9 @@ def plotfit(datasets, searchstrs):
     plt.legend(loc=2, bbox_to_anchor=(1.05, 1.15), prop={'size': 14}, borderpad=0.4, labelspacing=0.1)
     plt.xlim(-15, 20)
     plt.ylim(-11, -1)
-    plt.savefig(path + "_".join(searchstrs) + "_IdVg_all.pdf", bbox_inches='tight')
+    plt.savefig(path + searchstrs + "_IdVg_all.pdf", bbox_inches='tight')
+
+    plt.close()
 
     plt.figure()
     plt.ylabel(r'S [V/dec.]')
@@ -713,7 +715,9 @@ def plotfit(datasets, searchstrs):
     plt.plot(t, slim, color="#000099", marker='x', markersize=10, markeredgewidth=2)
     ax = plt.gca()
     ax.set_yscale('log')
-    plt.savefig(path + "_".join(searchstrs) + "_S_T_log.pdf", bbox_inches='tight')
+    plt.savefig(path + searchstrs + "_S_T_log.pdf", bbox_inches='tight')
+
+    plt.close()
 
     plt.figure()
     plt.ylabel(r'S [V/dec.]')
@@ -722,7 +726,9 @@ def plotfit(datasets, searchstrs):
     plt.plot(t, slim, color="#000099", marker='x', markersize=10, markeredgewidth=2)
     ax = plt.gca()
     # ax.text(100, 1, " Cont.")
-    plt.savefig(path + "_".join(searchstrs) + "_S_T_ar.pdf", bbox_inches='tight')
+    plt.savefig(path + searchstrs + "_S_T_ar.pdf", bbox_inches='tight')
+
+    plt.close()
 
 
 # fitting devices type2
@@ -737,7 +743,7 @@ def secondfit(directorypath, searchstrs, antisearch):
         filepaths.append(filenamerec)
     filepaths = sorted(filepaths)
     for singlepaths in filepaths:
-        if any(singlesearchstr in singlepaths for singlesearchstr in searchstrs):
+        if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):       # any instead of all
             if not any(anti in singlepaths for anti in antisearch):
                 foundpaths.append(singlepaths)
     if not foundpaths:
@@ -745,13 +751,19 @@ def secondfit(directorypath, searchstrs, antisearch):
         return
     foundpaths = sorted(foundpaths)
     datasets = []
-
+    device = foundpaths[0].split("/")[6]
     for devicepath in foundpaths:
         print(devicepath)
-        valuelist = secondextractvaluesfromfile(devicepath)
-        datasets.append(valuelist[5])
-    plotfit(datasets, searchstrs)
-
+        if devicepath.split("/")[6] == device:
+            valuelist = secondextractvaluesfromfile(devicepath)
+            datasets.append(valuelist[5])
+        else:
+            plotfit(datasets, device)
+            datasets.clear()
+            device = devicepath.split("/")[6]
+            valuelist = secondextractvaluesfromfile(devicepath)
+            datasets.append(valuelist[5])
+    plotfit(datasets, device)
 
 # multiple plots from one .crv file and creating type2
 def secondfileplotfunction(pathtofile):

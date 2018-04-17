@@ -24,6 +24,6 @@ antisearch = ["logfile", "sweep"]
 
 
 # removed condition that all searchstr must be in path for multiple device handling for secondfit
-searchstr3 = ["dev82"]
-antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis", "Vd001", "Vd01", "Vd1", "Vd3"]
-secondfit("../../Batchelor-Arbeit/Messdaten2/chip2/g2/", searchstr3, antisearch2)
+searchstr3 = ["Vd1V"]
+antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis"]
+secondfit("../../Batchelor-Arbeit/Messdaten2/chip2/g4/", searchstr3, antisearch2)
