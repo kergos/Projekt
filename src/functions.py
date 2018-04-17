@@ -420,13 +420,25 @@ def secondextractvaluesfromfile(pathtofile):
         """
         print("IDminneu: ", idmin)
         print("Idmin+", idminplus)
-        print("Vmin ", vmin)
-        print("Vth1 ", vth1)
-        print("Vth2 ", vth2)
         """
-        # get index from vmin and vth2
+
+        # get index from vmin on backsweep if necessary
         minind = vg.index(vmin)
+        # get index from vth2
         maxind = vg.index(vth2)
+        # check if minind is on first sweep, if yes get minind on backsweep
+        if abs(minind-maxind) > 100:
+            # print("index difference too large -> changed min and max index for fit accordingly")
+            # if difference is too big, after fix maxind is smaller than mindind
+            #  because it comes first on backsweep so in that case we need to swap minind and maxind
+            minind = maxind
+            maxind = len(vg1) + vg2.index(vmin)
+        """
+        print("vmin laut vg2(pos3):", vmin)
+        print("index von vmin(minind):", minind)
+        print("vth2:", vth2)
+        print("index von vth2(maxind):", maxind)
+        """
 
         # try to fit line from vmin to vth2
         fitvalue = np.polyfit(vg[minind:maxind], np.log(idr[minind:maxind]), 1)
