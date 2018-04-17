@@ -430,7 +430,7 @@ def secondextractvaluesfromfile(pathtofile):
         if abs(minind-maxind) > 100:
             # print("index difference too large -> changed min and max index for fit accordingly")
             # if difference is too big, after fix maxind is smaller than mindind
-            #  because it comes first on backsweep so in that case we need to swap minind and maxind
+            # because it comes first on backsweep so in that case we need to swap minind and maxind
             minind = maxind
             maxind = len(vg1) + vg2.index(vmin)
         """
