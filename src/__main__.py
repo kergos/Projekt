@@ -10,7 +10,7 @@ multipledirpath2 = "../../Batchelor-Arbeit/Messdaten2/"  # path to comparedevice
 
 
 # secondfileplotfunction("../../Batchelor-Arbeit/Messdaten2/chip1/g1/dev99/22C/IDVG/ch1_g1_dev99_idvg_ar_Vd5V.txt")
-# secondfilesystemplotfunction('../../Batchelor-Arbeit/Messdaten2/') # only use when ready Takes on Average 6minutes
+secondfilesystemplotfunction('../../Batchelor-Arbeit/Messdaten3/') # only use when ready Takes on Average 6minutes
 
 
 searchstrs = ["-20_20V", "Vd05V", "dark"]
@@ -18,7 +18,7 @@ searchstrs = ["-20_20V", "Vd05V", "dark"]
 # comparedevicesinfolder(multipledirpath, searchstrs)
 
 
-searchstr2 = ["22C", "4um", "IDVG", "Vd3V", "baked"]
+searchstr2 = ["165C", "IDVG", "Vd5V"]
 antisearch = ["logfile", "sweep"]
 #secondcomparedevices("../../Batchelor-Arbeit/Messdaten2_lengthsorted/", searchstr2, antisearch)
 
@@ -26,4 +26,4 @@ antisearch = ["logfile", "sweep"]
 # removed condition that all searchstr must be in path for multiple device handling for secondfit
 searchstr3 = ["Vd1V"]
 antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis"]
-secondfit("../../Batchelor-Arbeit/Messdaten2/chip2/g4/", searchstr3, antisearch2)
+# secondfit("../../Batchelor-Arbeit/Messdaten2/chip1/g1/", searchstr3, antisearch2)

@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+#from multiprocessing import Pool
 from textwrap import wrap
 import matplotlib.pyplot as plt
 import numpy as np
@@ -161,10 +161,10 @@ def filesystemplotfunction(relativepath):
 
     print("running...")
     print("Es wurden ", count, "Messdaten gefunden.")
-    pool = Pool(os.cpu_count())  # Use all the CPUs available
+    #pool = Pool(os.cpu_count())  # Use all the CPUs available
 
     start_time = time.time()
-    pool.map(fileplotfunction, filepaths)  # Multiprocess
+    #pool.map(fileplotfunction, filepaths)  # Multiprocess
     end_time = time.time()
 
     print("Es wurden", count*2, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
@@ -387,8 +387,9 @@ def secondextractvaluesfromfile(pathtofile):
         # minimum value wrong because of too high measuring resolution
         # idmin = np.min(tidr[np.nonzero(tidr)])
         # now it uses the last element in the crv which should be the lowest because of hysteresis
-        idmin = idr[-1]
-
+        # sadly it is not because in 165C the curve drops off before the hysteresis begins
+        #idmin = idr[-1]
+        idmin = min(idr)
         # first we would get treshold at 10% of idr = vth1 but because of mos2-characteristics we now take only 1%
         threshid = 0.01*idmax
 
@@ -412,8 +413,7 @@ def secondextractvaluesfromfile(pathtofile):
         vth2 = vg2[pos2]
         # print("VTH1: ", vth1)
         # print("VTH2: ", vth2)
-
-        # getting Vmin which is the x value at Imin+50% originally 10% but that was too low too get a good fit
+        # getting Vmin which is the x value at Imin+50% originally 10% but that was too low to get a good fit
         idminplus = idmin * 1.5
         pos3 = (np.abs(idn2 - idminplus)).argmin()
         vmin = vg2[pos3]
@@ -426,9 +426,10 @@ def secondextractvaluesfromfile(pathtofile):
         minind = vg.index(vmin)
         # get index from vth2
         maxind = vg.index(vth2)
+
         # check if minind is on first sweep, if yes get minind on backsweep
         if abs(minind-maxind) > 100:
-            # print("index difference too large -> changed min and max index for fit accordingly")
+            print("index difference too large -> changed min and max index for fit accordingly")
             # if difference is too big, after fix maxind is smaller than mindind
             # because it comes first on backsweep so in that case we need to swap minind and maxind
             minind = maxind
@@ -501,7 +502,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 
     foundpaths = sorted(foundpaths)
     file = open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
-    file.write("Devicename       Vth1(V)        Vth2(V)     Vmin(V)     Id_max(A)    Id_min(A)    Gradient[V/dec]    "
+    file.write("Devicename       Vth1[V]        Vth2[V]     Vmin[V]     Id_max[A]    Id_min[A]    Gradient[V/dec]    "
                "Capacity[F]\n")
     for devicepath in foundpaths:
         # get values from devicepath
@@ -553,6 +554,19 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
         i += 1
     # time measuring start
     start_time = time.time()
+
+    textSize = 15
+    textSizeLegend = 18
+
+    font = {'size': textSize}
+    plt.rc('font', **font)
+    # ~ matplotlib.rc('font', **{'family':'serif','serif':['Palatino']})
+    plt.rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helveltica']})
+    plt.rc('text', usetex=True)
+
+    plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
+
+
     fig, ax = plt.subplots()
     ax.set_yscale("log")
     fig.set_size_inches(len(x), 10)
@@ -561,8 +575,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.set_xticklabels(validdevices)
     rects = ax.bar(index, validfactors, barwidth, alpha=opacity, color='orange',
                    error_kw=error_config)
-    ax.set(xlabel='Devices', ylabel='Imax/Imin',
-           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set(xlabel='Devices', ylabel='$I_{max}$/$I_{min}$')
+           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     ax.grid()
     autolabel(rects, ax)
 
@@ -583,8 +597,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(validfactors, pdf, '-.')
     # now histogramm
     plt.hist(validfactors, bins='auto', density=True, facecolor='orange', alpha=0.75)
-    ax.set(xlabel='Idmax/Idmin', ylabel='Probability',
-           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set(xlabel='$I{max}$/$I_{min}$', ylabel='Probability')
+           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     ax.set_xscale("log")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Imax_Imin_Histogram.png", bbox_inches='tight', dpi=300)
@@ -595,13 +609,13 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     fig.set_size_inches(len(x), 10)
     index = np.arange(len(validdevices))
     rect1 = ax.bar(index, validvth1, barwidth, alpha=opacity, color='b',
-                   error_kw=error_config, label='Vth1')
+                   error_kw=error_config, label='$V{th1}$')
     rect2 = ax.bar(index+barwidth, validvth2, barwidth,  alpha=opacity, color='g',
-                   error_kw=error_config, label='Vth2')
+                   error_kw=error_config, label='$V_{th2}$')
     ax.set_xticks(index + barwidth / 2)
     ax.set_xticklabels(validdevices)
-    ax.set(xlabel='Devices', ylabel='V_th',
-           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set(xlabel='Devices', ylabel='$V_{th} [V]$')
+           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     autolabel(rect1, ax)
     autolabel(rect2, ax)
     ax.grid()
@@ -627,8 +641,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(validvth2, pdf, '-.')
     # now histogramm
     plt.hist(validvth2, bins='auto', density=True, facecolor='g', alpha=0.75)
-    ax.set(xlabel='Vth2', ylabel='Probability',
-           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set(xlabel='$V_{th2} [V]$', ylabel='Probability')
+           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vth2_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -647,8 +661,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(vthdelta, pdf, '-.')
     # now histogramm
     plt.hist(vthdelta, bins='auto', density=True, facecolor='g', alpha=0.75)
-    ax.set(xlabel='Vthdelta', ylabel='Probability',
-           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set(xlabel='$V_{th\delta} [V]$', ylabel='Probability')
+           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -666,8 +680,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(validgrad, pdf, '-.')
     # now histogramm
     plt.hist(validgrad, bins='auto', density=True, facecolor='g', alpha=0.75)
-    ax.set(xlabel='Gradient [V/dec]', ylabel='Probability',
-           title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    ax.set(xlabel='Gradient [V/dec]', ylabel='Probability')
+           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Gradient_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -686,6 +700,16 @@ def plotfit(datasets, searchstrs):
     s2 = []
     slim = []
 
+    textSize = 15
+    textSizeLegend = 18
+
+    font = {'size': textSize}
+    plt.rc('font', **font)
+    plt.rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helveltica']})
+    plt.rc('text', usetex=True)
+
+    plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
+
     for j, dataset in enumerate(datasets):
         t.append(dataset['T'])
         s2.append(dataset['S2'])
@@ -693,7 +717,9 @@ def plotfit(datasets, searchstrs):
 
         # get random color
         rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-        plt.ylabel(r'log$(I_\mathrm{D})$ [A]')
+        plt.set_yscale('log')
+        plt.grid()
+        plt.ylabel(r'$(I_\mathrm{D})$ [A]')
         plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
         plt.ylim(-11, -1)
         plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'])])) / np.log(10), marker='.',
@@ -707,7 +733,7 @@ def plotfit(datasets, searchstrs):
     plt.savefig(path + searchstrs + "_IdVg_all.pdf", bbox_inches='tight')
 
     plt.close()
-
+"""
     plt.figure()
     plt.ylabel(r'S [V/dec.]')
     plt.xlabel(r'T [K]')
@@ -729,7 +755,7 @@ def plotfit(datasets, searchstrs):
     plt.savefig(path + searchstrs + "_S_T_ar.pdf", bbox_inches='tight')
 
     plt.close()
-
+"""
 
 # fitting devices type2
 def secondfit(directorypath, searchstrs, antisearch):
@@ -765,11 +791,12 @@ def secondfit(directorypath, searchstrs, antisearch):
             datasets.append(valuelist[5])
     plotfit(datasets, device)
 
+
 # multiple plots from one .crv file and creating type2
 def secondfileplotfunction(pathtofile):
     if os.path.isfile(pathtofile):
         #print(pathtofile)
-        temppath = "../../Batchelor-Arbeit/Plots2/"
+        temppath = "../../Batchelor-Arbeit/Plots3/"
         newstring = pathtofile.split('/')
         newstring = newstring[4:]
         with open(pathtofile) as f:                   # starting at line 2 where plot data starts
@@ -789,15 +816,15 @@ def secondfileplotfunction(pathtofile):
         #print(data)
         try:
             x = [float(column[0]) for column in data]        # time
+        # y1 = [float(column[1]) for column in data]     # VDrain
+            y2 = [float(column[2]) for column in data]       # VGate
+            y3 = [abs(float(column[3])) for column in data]       # IDrain
+
         except Exception:
             with open(temppath+"error2.txt", "a") as f:
                 f.write("Fehler in "+pathtofile+"\n")
             print("failed to plot: "+pathtofile)
             return
-        # y1 = [float(column[1]) for column in data]     # VDrain
-        y2 = [float(column[2]) for column in data]       # VGate
-        y3 = [abs(float(column[3])) for column in data]       # IDrain
-
         for pathpiece in newstring[:-1]:
             # print(pathpiece)
             temppath = os.path.join(temppath, pathpiece+"/")
@@ -806,14 +833,24 @@ def secondfileplotfunction(pathtofile):
             # print(temppath)
         # print(newstring[len(newstring)-1])
 
+        textSize = 15
+        textSizeLegend = 18
+
+        font = {'size': textSize}
+        plt.rc('font', **font)
+        plt.rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helveltica']})
+        plt.rc('text', usetex=True)
+
+        plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
+
         fig, ax = plt.subplots()
         ax.plot(x, y3)
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        ax.set(xlabel='Time (s)', ylabel='IDrain (I)')
+        ax.set(xlabel='Time [s]', ylabel='$I_{DS}$ [A]')
         ax.grid()
-        title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
+        #title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
         fig.tight_layout()
-        title.set_y(1.03)
+        #title.set_y(1.03)
         fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__IDrain.png")
         plt.close(fig)
 
@@ -826,11 +863,11 @@ def secondfileplotfunction(pathtofile):
         # if wanted, you can set other x ticks here
         #ax.xaxis.set_major_locator(ticker.MultipleLocator(2.5))
         ax.set_yscale("log")
-        ax.set(xlabel='VBackGate (V)', ylabel='IDrain (I)')
+        ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
         ax.grid()
-        title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
+        #title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
         fig.tight_layout()
-        title.set_y(1.03)
+        #title.set_y(1.03)
         fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__VBackgate_IDrain.png")
         plt.close(fig)
     else:
@@ -855,10 +892,16 @@ def secondfilesystemplotfunction(relativepath):
     #print(validfilepaths)
     print("running...")
     print("Es wurden ", count, "Messdaten gefunden.")
-    pool = Pool(os.cpu_count())  # Use all the CPUs available
+    #pool = Pool(os.cpu_count())  # Use all the CPUs available
+
 
     start_time = time.time()
-    pool.map(secondfileplotfunction, validfilepaths)  # Multiprocess
+    #pool.map(secondfileplotfunction, validfilepaths)  # Multiprocess
+    i = 1
+    for path2 in validfilepaths:
+        secondfileplotfunction(path2)
+        print(""+str(i)+"/"+str(count)+" geplotted")
+        i = i+1
     end_time = time.time()
 
     print("Es wurden", count * 2, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
