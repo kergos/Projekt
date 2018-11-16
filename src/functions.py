@@ -1,6 +1,7 @@
 #from multiprocessing import Pool
 from textwrap import wrap
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 from scipy.constants import k, e
 import os
@@ -362,7 +363,8 @@ def comparedevicesinfolder(multipledirpath, searchstrs):
 
 # extracting data type2
 def secondextractvaluesfromfile(pathtofile):
-    if os.path.isfile(pathtofile):
+    #if os.path.isfile(pathtofile):
+    if ".txt" in pathtofile:
         with open(pathtofile) as f:
             f.__next__()
             data = f.read()
@@ -379,98 +381,136 @@ def secondextractvaluesfromfile(pathtofile):
         data.pop()  # remove last useless Array in crv
         vg = [float(column[2]) for column in data]  # VBackGate
         idr = [abs(float(column[3])) for column in data]  # IDrain abs
+        #print("txt")
+    else:   #data type is .crv other formatting
+        with open(pathtofile) as f:
+            for i in range(6):
+                f.__next__()
+            data = f.read()
+        data = data.split('\n')                   # splitting seperate lines
+        datatemp = [row.split('  ') for row in data]  # removing blanks
 
-        # get Imax/Imin
-        tvg = np.array(vg)
-        tidr = np.array(idr)
-        idmax = np.max(tidr[np.nonzero(tidr)])
-        # minimum value wrong because of too high measuring resolution
-        # idmin = np.min(tidr[np.nonzero(tidr)])
-        # now it uses the last element in the crv which should be the lowest because of hysteresis
-        # sadly it is not because in 165C the curve drops off before the hysteresis begins
-        #idmin = idr[-1]
-        idmin = min(idr)
-        # first we would get treshold at 10% of idr = vth1 but because of mos2-characteristics we now take only 1%
-        threshid = 0.01*idmax
+        # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
+        # will be 1 so it needs to be seperated by tabs
+        # only problem is that first data row gets axed but this is negligible
+        if len(datatemp[0]) > 1:
+            data = datatemp
+        else:
+            data = [row.split() for row in data]
+        data.pop()  # remove last useless Array in crv
+        vg = [float(column[2]) for column in data]  # VBackGate
+        idr = [abs(float(column[4])) for column in data]  # IDrain abs
+        #print("crv")
 
-        # getting end of first sweep max finds the index of the first sweep maximum
-        endoffirstarray = vg.index(max(vg))
-        # print("first sweep index at: ", vg.index(max(vg)))
-        # splitting array in up and down sweep
-        idn1 = np.asarray(idr[:endoffirstarray+1])
-        idn2 = np.asarray(idr[endoffirstarray+1:])
-        vg1 = vg[:endoffirstarray+1]
-        vg2 = vg[endoffirstarray+1:]
-        # takes the abs between all values in the sweep and takes the smallest one and returns its index,
-        # the smalles abs value stands for the smallest difference
-        pos1 = (np.abs(idn1 - threshid)).argmin()
-        pos2 = (np.abs(idn2 - threshid)).argmin()
+    #print(vg)
+    #print(idr)
+    # get Imax/Imin
+    tvg = np.array(vg)
+    tidr = np.array(idr)
+    idmax = np.max(tidr[np.nonzero(tidr)])
+    # minimum value wrong because of too high measuring resolution
+    # idmin = np.min(tidr[np.nonzero(tidr)])
+    # now it uses the last element in the crv which should be the lowest because of hysteresis
+    # sadly it is not because in 165C the curve drops off before the hysteresis begins
+    #idmin = idr[-1]
+    idmin = min(idr)
+    # first we would get treshold at 10% of idr = vth1 but because of mos2-characteristics we now take only 1%
+    threshid = 0.01*idmax
 
-        # print("FIRST ARRAY NEAREST: ", idn1[pos1])
-        # print("SECOND ARRAY NEAREST: ", idn2[pos2])
+    # getting end of first sweep max finds the index of the first sweep maximum
+    endoffirstarray = vg.index(max(vg))
+    #print("first sweep index at: ", vg.index(max(vg)))
+    # splitting array in up and down sweep
+    idn1 = np.asarray(idr[:endoffirstarray+1])
+    idn2 = np.asarray(idr[endoffirstarray+1:])
+    vg1 = vg[:endoffirstarray+1]
+    vg2 = vg[endoffirstarray+1:]
+    #print(threshid)
+    #print(idn1)
+    #print(idn2)
+    # takes the abs between all values in the sweep and takes the smallest one and returns its index,
+    # the smalles abs value stands for the smallest difference
+    pos1 = (np.abs(idn1 - threshid)).argmin()
+    pos2 = (np.abs(idn2 - threshid)).argmin()
 
-        vth1 = vg1[pos1]
-        vth2 = vg2[pos2]
-        # print("VTH1: ", vth1)
-        # print("VTH2: ", vth2)
-        # getting Vmin which is the x value at Imin+50% originally 10% but that was too low to get a good fit
-        idminplus = idmin * 1.5
-        pos3 = (np.abs(idn2 - idminplus)).argmin()
-        vmin = vg2[pos3]
-        """
-        print("IDminneu: ", idmin)
-        print("Idmin+", idminplus)
-        """
+    #print("FIRST ARRAY NEAREST: ", idn1[pos1])
+    #print("SECOND ARRAY NEAREST: ", idn2[pos2])
+    #print("FIRST ARRAY NEAREST: ", pos1)
+    #print("SECOND ARRAY NEAREST: ", pos2)
+    vth1 = vg1[pos1]
+    vth2 = vg2[pos2]
+    #print("VTH1: ", vth1)
+    #print("VTH2: ", vth2)
+    # getting Vmin which is the x value at Imin+50% originally 10% but that was too low to get a good fit
+    idminplus = idmin * 1.5
+    pos3 = (np.abs(idn2 - idminplus)).argmin()
+    vmin = vg2[pos3]
+    #print(pos3)
+    """
+    print("IDminneu: ", idmin)
+    print("Idmin+", idminplus)
+    """
+    #print(vmin)
+    #print(vth2)
 
-        # get index from vmin on backsweep if necessary
-        minind = vg.index(vmin)
-        # get index from vth2
-        maxind = vg.index(vth2)
+    # get index from vmin on backsweep if necessary
+    minind = vg.index(vmin)
+    # get index from vth2
+    maxind = vg.index(vth2)
+    #print(minind)
+    #print(maxind)
+    # check if minind is on first sweep, if yes get minind on backsweep
+    if abs(minind-maxind) > 100 or minind is maxind:
+        print("index difference too large -> changed min and max index for fit accordingly")
+        # if difference is too big, after fix maxind is smaller than mindind
+        # because it comes first on backsweep so in that case we need to swap minind and maxind
+        minind = maxind
+        maxind = len(vg1) + vg2.index(vmin)
 
-        # check if minind is on first sweep, if yes get minind on backsweep
-        if abs(minind-maxind) > 100:
-            print("index difference too large -> changed min and max index for fit accordingly")
-            # if difference is too big, after fix maxind is smaller than mindind
-            # because it comes first on backsweep so in that case we need to swap minind and maxind
-            minind = maxind
-            maxind = len(vg1) + vg2.index(vmin)
-        """
-        print("vmin laut vg2(pos3):", vmin)
-        print("index von vmin(minind):", minind)
-        print("vth2:", vth2)
-        print("index von vth2(maxind):", maxind)
-        """
+    if maxind < minind:  # swap for debug purpose
+        temp = maxind
+        maxind = minind
+        minind = temp
 
-        # try to fit line from vmin to vth2
-        fitvalue = np.polyfit(vg[minind:maxind], np.log(idr[minind:maxind]), 1)
-        # slope for fit
-        slope = 1/fitvalue[0] * np.log(10)
+    #print(minind)
+    #print(maxind)
+    """
+    print("vmin laut vg2(pos3):", vmin)
+    print("index von vmin(minind):", minind)
+    print("vth2:", vth2)
+    print("index von vth2(maxind):", maxind)
+    """
+    # try to fit line from vmin to vth2
+    fitvalue = np.polyfit(vg[minind:maxind], np.log(idr[minind:maxind]), 1)
+    # slope for fit
+    slope = 1/fitvalue[0] * np.log(10)
+    slopemV = slope*1000
+    # print("Steigung: ", slope)
+    # print("fitvalue: ", fitvalue)
 
-        # print("Steigung: ", slope)
-        # print("fitvalue: ", fitvalue)
-
-        # getting Temperature from path
-        pathlist = pathtofile.split("/")
-        T = pathlist[7][:-1]
-        bakestat = "_notbkd"
-        if "baked" in pathtofile:
-            bakestat = "_bkd"
-            T = pathlist[7][:-7]
-        # C° + 273.15 = Kelvin
-        T = (int(T) + 273.15)
-        if T > 325.15:
-            bakestat = ""
-        slim = T * k / e * np.log(10)
-        # Calculate Ct cox = epser/thickness
-        cox = 3.9/90e-9
-        # slope/slim = (ct+cox)/cox
-        ct = ((slope/slim)*cox)-cox
-        # Get Vd from path
-        strindex = pathlist[9].find("Vd")
-        dataset = (dict(T=T, Vg=tvg, Id=tidr, S2=slope, Slim=slim, Fit=fitvalue, Baked=bakestat, Device=pathlist[6],
-                        Vd=pathlist[9][strindex:-4], Ct=ct))
-        returnlist = [vth1, vth2, vmin, idmax, idmin, dataset]
-        return returnlist
+    # getting Temperature from path
+    pathlist = pathtofile.split("/")
+    T = pathlist[7][:-1]
+    bakestat = "_notbkd"
+    if "baked" in pathtofile:
+        bakestat = "_bkd"
+        T = pathlist[7][:-7]
+    # C° + 273.15 = Kelvin
+    T = (int(T) + 273.15)
+    if T > 325.15:
+        bakestat = ""
+    slim = T * k / e * np.log(10)
+    # Calculate Ct cox = epser/thickness
+    cox = 3.9/90e-9
+    # slope/slim = (ct+cox)/cox
+    ct = ((slope/slim)*cox)-cox
+    # Get Vd from path
+    strindex = pathlist[9].find("Vd")
+    dataset = (dict(T=T, Vg=tvg, Id=tidr, S2=slopemV, Slim=slim, Fit=fitvalue, Baked=bakestat, Device=pathlist[6],
+                    Vd=pathlist[9][strindex:-4], Ct=ct))
+    returnlist = [vth1, vth2, vmin, idmax, idmin, dataset]
+    #print (dataset)
+    return returnlist
 
 
 # comparing devices type2
@@ -482,27 +522,33 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     filepaths = []
     foundpaths = []
     for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
-        # print(filenamerec)
+        #print(filenamerec)
+        filepaths.append(filenamerec)
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
+        #print(filenamerec)
         filepaths.append(filenamerec)
 
+    print(filepaths)
     filepaths = sorted(filepaths)       # order list for pretty test printing purposes
     for singlepaths in filepaths:
         if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):  # checks for files with strings
-            # print(singlepaths)                                                    # from searchstr and prints them
+            #print(singlepaths)                                                    # from searchstr and prints them
             if not any(anti in singlepaths for anti in antisearch):
                 foundpaths.append(singlepaths)
-                # print(singlepaths)
+                #print(singlepaths)
     if not foundpaths:
         print("no filename which contains all keywords was found")
         return
     # print(foundpaths)
 
-    nameofnewfile = "_".join(searchstrs) + "_Messdaten2_comparefile"
-    temppath = "../../Batchelor-Arbeit/Compare-Plots2/"
+    nameofnewfile = "_".join(searchstrs) + "_Messdaten_comparefile"
+    temppath = "../../Batchelor-Arbeit/Compare-Plots/"
+
+    #print("------------------------------------------------------------------------------------")
 
     foundpaths = sorted(foundpaths)
     file = open(temppath + directorypath.split('/')[4] + "_" + nameofnewfile + "_no[" + "_".join(antisearch) + "].crv", "w")
-    file.write("Devicename       Vth1[V]        Vth2[V]     Vmin[V]     Id_max[A]    Id_min[A]    Gradient[V/dec]    "
+    file.write("Devicename       Vth1[V]        Vth2[V]     Vmin[V]     Id_max[A]    Id_min[A]    Gradient[mV/dec]    "
                "Capacity[F]\n")
     for devicepath in foundpaths:
         # get values from devicepath
@@ -521,9 +567,10 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     data = [row.split(' ') for row in data]  # removing blanks
     data.pop()
 
-    # print(data)
-    # x = [column[0] for column in data]          # Devices
-    x = ["\n".join(wrap(column[0], 5)) for column in data]          # Devices"\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60))
+    #print(data)
+    #x = [column[0] for column in data]          # Devices
+    x = [column[0].replace("_", "\_") for column in data]  #
+    #x = ["\\".join(wrap(column[0].replace("_", "\_"), 5)) for column in data]          # Devices"\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60))
     x.sort()
     y1 = [float(column[1]) for column in data]  # Vth1
     y2 = [float(column[2]) for column in data]  # Vth2
@@ -546,8 +593,11 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     i = 0
     for factor in yifactor:
         if factor > 1e3:
-            validfactors.append(factor)
-            validdevices.append(x[i])
+            validfactors.append(float(format(factor, ".2e")))   #for better readability in factorgraph
+            if typecheck(x[i]) is True:
+                validdevices.append("B-"+x[i].split('_')[4])
+            else:
+                validdevices.append("E-" + x[i].split('_')[4])
             validvth1.append(y1[i])
             validvth2.append(y2[i])
             validgrad.append(y6[i])
@@ -567,9 +617,14 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
 
 
+    #print(validdevices)
+
+
     fig, ax = plt.subplots()
     ax.set_yscale("log")
+    #ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     fig.set_size_inches(len(x), 10)
+    ax.tick_params(length=3)
     index = np.arange(len(validdevices))
     ax.set_xticks(index)
     ax.set_xticklabels(validdevices)
@@ -597,7 +652,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(validfactors, pdf, '-.')
     # now histogramm
     plt.hist(validfactors, bins='auto', density=True, facecolor='orange', alpha=0.75)
-    ax.set(xlabel='$I{max}$/$I_{min}$', ylabel='Probability')
+    ax.set(xlabel='$I_{max}$/$I_{min}$', ylabel='Probability')
            #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     ax.set_xscale("log")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
@@ -609,7 +664,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     fig.set_size_inches(len(x), 10)
     index = np.arange(len(validdevices))
     rect1 = ax.bar(index, validvth1, barwidth, alpha=opacity, color='b',
-                   error_kw=error_config, label='$V{th1}$')
+                   error_kw=error_config, label='$V_{th1}$')
     rect2 = ax.bar(index+barwidth, validvth2, barwidth,  alpha=opacity, color='g',
                    error_kw=error_config, label='$V_{th2}$')
     ax.set_xticks(index + barwidth / 2)
@@ -680,7 +735,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.plot(validgrad, pdf, '-.')
     # now histogramm
     plt.hist(validgrad, bins='auto', density=True, facecolor='g', alpha=0.75)
-    ax.set(xlabel='Gradient [V/dec]', ylabel='Probability')
+    ax.set(xlabel='Gradient [mV/dec]', ylabel='Probability')
            #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Gradient_Histogram.png", bbox_inches='tight', dpi=300)
@@ -695,7 +750,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 # plotting fits
 def plotfit(datasets, searchstrs):
     plt.figure()
-    path = "../../Batchelor-Arbeit/Fit-Plots2/"
+    path = "../../Batchelor-Arbeit/Fit-Plots3/"
     t = []
     s2 = []
     slim = []
@@ -710,26 +765,33 @@ def plotfit(datasets, searchstrs):
 
     plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
 
+    plt.grid()
+    plt.ylabel(r'log$(I_\mathrm{D})$ [A]')
+    plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
+    plt.ylim(-14, -1)
+    plt.xticks(np.arange(-25, 25, step=5))
+    plt.yticks(np.arange(-14, -1, step=2))
+
+
+
     for j, dataset in enumerate(datasets):
+        ypos = -16
         t.append(dataset['T'])
         s2.append(dataset['S2'])
         slim.append(dataset['Slim'])
 
         # get random color
         rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-        plt.set_yscale('log')
-        plt.grid()
-        plt.ylabel(r'$(I_\mathrm{D})$ [A]')
-        plt.xlabel(r'$V_\mathrm{G} \: [\mathrm{V}]$')
-        plt.ylim(-11, -1)
-        plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'])])) / np.log(10), marker='.',
-                 markersize=5, color=rcolor, linestyle=' ', label=dataset['Device'] + "_" + dataset['Vd'] + "_" + str(dataset['T']) + "K" + dataset['Baked'])
-        plt.plot(dataset['Vg'], (dataset['Vg'] * dataset["Fit"][0] + dataset["Fit"][1]) / np.log(10), color=rcolor)
-        plt.text(-4, -13-j, "S = " + "{:.3f}".format(dataset['S2']) + "V/dec.", color=rcolor)
+        # latex workaround
+        labelstr = (dataset['Device'] + "_" + dataset['Vd'] + "_" + str(dataset['T']) + "K" + dataset['Baked']).replace("_","\_")
 
-    plt.legend(loc=2, bbox_to_anchor=(1.05, 1.15), prop={'size': 14}, borderpad=0.4, labelspacing=0.1)
-    plt.xlim(-15, 20)
-    plt.ylim(-11, -1)
+        plt.plot(dataset['Vg'], np.log(np.abs(dataset['Id'][0:len(dataset['Id'])])) / np.log(10), marker='.',
+                 markersize=5, color=rcolor, linestyle=' ', label=labelstr)
+        plt.plot(dataset['Vg'], (dataset['Vg'] * dataset["Fit"][0] + dataset["Fit"][1]) / np.log(10), color=rcolor)
+        plt.text(ypos, -17 - j, "S = " + "{:.3f}".format(dataset['S2']) + "mV/dec.", color=rcolor,
+                 horizontalalignment='center', verticalalignment='center')
+    #plt.legend(loc=3, bbox_to_anchor=(0.35, -0.4), prop={'size': 14}, borderpad=0.2, labelspacing=0.1)
+    plt.legend(bbox_to_anchor=(1.1, -0.2), prop={'size': 14}, borderpad=0.2, labelspacing=0.1)
     plt.savefig(path + searchstrs + "_IdVg_all.pdf", bbox_inches='tight')
 
     plt.close()
@@ -767,6 +829,8 @@ def secondfit(directorypath, searchstrs, antisearch):
     foundpaths = []
     for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
         filepaths.append(filenamerec)
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
+        filepaths.append(filenamerec)
     filepaths = sorted(filepaths)
     for singlepaths in filepaths:
         if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):       # any instead of all
@@ -776,100 +840,134 @@ def secondfit(directorypath, searchstrs, antisearch):
         print("no filename which contains all keywords was found")
         return
     foundpaths = sorted(foundpaths)
+    #print(foundpaths)
     datasets = []
     device = foundpaths[0].split("/")[6]
+    #print(device)
     for devicepath in foundpaths:
         print(devicepath)
+        #print(devicepath.split("/")[5])
         if devicepath.split("/")[6] == device:
             valuelist = secondextractvaluesfromfile(devicepath)
+            #print(valuelist)
             datasets.append(valuelist[5])
         else:
-            plotfit(datasets, device)
+            plotfit(datasets, devicepath.split("/")[4]+"_"+devicepath.split("/")[5]+"_"+searchstrs[0]+"_"+device)
             datasets.clear()
             device = devicepath.split("/")[6]
             valuelist = secondextractvaluesfromfile(devicepath)
             datasets.append(valuelist[5])
-    plotfit(datasets, device)
+    plotfit(datasets, devicepath.split("/")[4]+"_"+devicepath.split("/")[5]+"_"+searchstrs[0]+"_"+device)
 
 
 # multiple plots from one .crv file and creating type2
 def secondfileplotfunction(pathtofile):
     if os.path.isfile(pathtofile):
-        #print(pathtofile)
         temppath = "../../Batchelor-Arbeit/Plots3/"
         newstring = pathtofile.split('/')
         newstring = newstring[4:]
-        with open(pathtofile) as f:                   # starting at line 2 where plot data starts
-            f.__next__()
-            data = f.read()
-        data = data.split('\n')  # splitting seperate lines
-        datatemp = [row.split('  ') for row in data]  # removing blanks
+        # print(pathtofile)
+        if ".txt" in pathtofile:
+            with open(pathtofile) as f:                   # starting at line 2 where plot data starts
+                f.__next__()
+                data = f.read()
+                data = data.split('\n')  # splitting seperate lines
+                datatemp = [row.split('  ') for row in data]  # removing blanks
+            # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
+            # will be 1 so it needs to be seperated by tabs
+            # only problem is that first data row gets axed but this is negligible
+            if len(datatemp[0]) > 1:
+                data = datatemp
+            else:
+                data = [row.split() for row in data]
+            data.pop()  # remove last useless Array in crv
+            # print(data)
+            try:
+                x = [float(column[0]) for column in data]  # time
+                # y1 = [float(column[1]) for column in data]     # VDrain
+                y2 = [float(column[2]) for column in data]  # VGate
+                y3 = [abs(float(column[3])) for column in data]  # IDrain
 
-        # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
-        # will be 1 so it needs to be seperated by tabs
-        # only problem is that first data row gets axed but this is negligible
-        if len(datatemp[0]) > 1:
-            data = datatemp
-        else:
-            data = [row.split() for row in data]
-        data.pop()  # remove last useless Array in crv
-        #print(data)
-        try:
-            x = [float(column[0]) for column in data]        # time
-        # y1 = [float(column[1]) for column in data]     # VDrain
-            y2 = [float(column[2]) for column in data]       # VGate
-            y3 = [abs(float(column[3])) for column in data]       # IDrain
+            except Exception:
+                with open(temppath + "error2.txt", "a") as f:
+                    f.write("Fehler in " + pathtofile + "\n")
+                print("failed to plot: " + pathtofile)
+                return
 
-        except Exception:
-            with open(temppath+"error2.txt", "a") as f:
-                f.write("Fehler in "+pathtofile+"\n")
-            print("failed to plot: "+pathtofile)
-            return
-        for pathpiece in newstring[:-1]:
-            # print(pathpiece)
-            temppath = os.path.join(temppath, pathpiece+"/")
-            if not os.path.exists(temppath):
-                os.makedirs(temppath)
-            # print(temppath)
-        # print(newstring[len(newstring)-1])
 
-        textSize = 15
-        textSizeLegend = 18
+        else:  # data type is .crv other formatting
+            with open(pathtofile) as f:
+                for i in range(6):
+                    f.__next__()
+                data = f.read()
+            data = data.split('\n')  # splitting seperate lines
+            datatemp = [row.split('  ') for row in data]  # removing blanks
+            # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
+            # will be 1 so it needs to be seperated by tabs
+            # only problem is that first data row gets axed but this is negligible
+            if len(datatemp[0]) > 1:
+                data = datatemp
+            else:
+                data = [row.split() for row in data]
+            data.pop()  # remove last useless Array in crv
+            # print(data)
+            try:
+                x = [float(column[1]) for column in data]  # time
+                # y1 = [float(column[1]) for column in data]     # VDrain
+                y2 = [float(column[2]) for column in data]  # VGate
+                y3 = [abs(float(column[4])) for column in data]  # IDrain
 
-        font = {'size': textSize}
-        plt.rc('font', **font)
-        plt.rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helveltica']})
-        plt.rc('text', usetex=True)
+            except Exception:
+                with open(temppath + "error2.txt", "a") as f:
+                    f.write("Fehler in " + pathtofile + "\n")
+                print("failed to plot: " + pathtofile)
+                return
 
-        plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
+            for pathpiece in newstring[:-1]:
+                # print(pathpiece)
+                temppath = os.path.join(temppath, pathpiece + "/")
+                if not os.path.exists(temppath):
+                    os.makedirs(temppath)
+                # print(temppath)
+            # print(newstring[len(newstring)-1])
 
-        fig, ax = plt.subplots()
-        ax.plot(x, y3)
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        ax.set(xlabel='Time [s]', ylabel='$I_{DS}$ [A]')
-        ax.grid()
-        #title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
-        fig.tight_layout()
-        #title.set_y(1.03)
-        fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__IDrain.png")
-        plt.close(fig)
+            textSize = 15
+            textSizeLegend = 18
 
-        fig, ax = plt.subplots()
-        ax.plot(y2, y3, 'r.')
-        # useless code since now all Id will be abs values
-        #if any(yvalues < 0 for yvalues in y3):
-        #    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-        #else:
-        # if wanted, you can set other x ticks here
-        #ax.xaxis.set_major_locator(ticker.MultipleLocator(2.5))
-        ax.set_yscale("log")
-        ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
-        ax.grid()
-        #title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
-        fig.tight_layout()
-        #title.set_y(1.03)
-        fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__VBackgate_IDrain.png")
-        plt.close(fig)
+            font = {'size': textSize}
+            plt.rc('font', **font)
+            plt.rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helveltica']})
+            plt.rc('text', usetex=True)
+
+            plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
+
+            fig, ax = plt.subplots()
+            ax.plot(x, y3)
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+            ax.set(xlabel='Time [s]', ylabel='$I_{DS}$ [A]')
+            ax.grid()
+            #title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
+            fig.tight_layout()
+            #title.set_y(1.03)
+            fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__IDrain.png")
+            plt.close(fig)
+
+            fig, ax = plt.subplots()
+            ax.plot(y2, y3, 'r.')
+            # useless code since now all Id will be abs values
+            #if any(yvalues < 0 for yvalues in y3):
+            #    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+            #else:
+            # if wanted, you can set other x ticks here
+            #ax.xaxis.set_major_locator(ticker.MultipleLocator(2.5))
+            ax.set_yscale("log")
+            ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+            ax.grid()
+            #title = ax.set_title("\n".join(wrap((newstring[len(newstring) - 1])[:-4], 60)))
+            fig.tight_layout()
+            #title.set_y(1.03)
+            fig.savefig(temppath + (newstring[len(newstring)-1])[:-4] + "__VBackgate_IDrain.png")
+            plt.close(fig)
     else:
         print("File not found")
 
@@ -881,6 +979,9 @@ def secondfilesystemplotfunction(relativepath):
     validfilepaths = []
     count = 0
     for filenamerec in glob.iglob(os.path.join(path, "**/*.txt"), recursive=True):
+        #print(filenamerec)
+        filepaths.append(filenamerec)
+    for filenamerec in glob.iglob(os.path.join(path, "**/*.crv"), recursive=True):
         #print(filenamerec)
         filepaths.append(filenamerec)
     # filtering logfiles for they are useless
@@ -920,3 +1021,9 @@ def autolabel(rects, ax):
 
 def randint():
     return random.randint(0, 255)
+
+
+def typecheck(string):
+    if "bare" in string:
+        return True
+    return False
