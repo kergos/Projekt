@@ -1008,6 +1008,100 @@ def secondfilesystemplotfunction(relativepath):
     print("Es wurden", count * 2, "Bilder geplottet, dies hat", end_time - start_time, "Sekunden gedauert")
 
 
+def simuplot(path):
+    filepaths1 = []
+    filepaths2 = []
+    filepathssim = []
+    pathmeasure1 = path + "Input_measuretype1"
+    pathmeasure2 = path + "Input_measuretype2"
+    pathsim = path + "Input_sim"
+    for filenamerec in glob.iglob(os.path.join(pathmeasure1, "**/*.crv"), recursive=True):
+        filepaths1.append(filenamerec)
+    for filenamerec in glob.iglob(os.path.join(pathmeasure2, "**/*.txt"), recursive=True):
+        filepaths2.append(filenamerec)
+    for filenamerec in glob.iglob(os.path.join(pathsim, "**/*.crv"), recursive=True):
+        filepathssim.append(filenamerec)
+
+    textSize = 15
+    textSizeLegend = 18
+
+    font = {'size': textSize}
+    plt.rc('font', **font)
+    plt.rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helveltica']})
+    plt.rc('text', usetex=True)
+    plt.tight_layout()
+    plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
+    fig, ax = plt.subplots()
+
+    for pathtofile in filepaths1:
+        with open(pathtofile) as f:
+            for i in range(6):
+                f.__next__()
+            data = f.read()
+        data = data.split('\n')  # splitting seperate lines
+        datatemp = [row.split('  ') for row in data]  # removing blanks
+        # checks if it is a different format (example if not seperated by "  " len(datatemp[0])
+        # will be 1 so it needs to be seperated by tabs
+        # only problem is that first data row gets axed but this is negligible
+        if len(datatemp[0]) > 1:
+            data = datatemp
+        else:
+            data = [row.split() for row in data]
+        data.pop()  # remove last useless Array in crv
+
+        y2 = [float(column[2]) for column in data]  # VGate
+        y3 = [abs(float(column[4])) for column in data]  # IDrain
+
+        rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
+        ax.plot(y2, y3, '.', color=rcolor)
+        ax.set_yscale("log")
+        ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+        ax.grid()
+        fig.tight_layout()
+    for pathtofile in filepaths2:
+            with open(pathtofile) as f:
+                for i in range(6):
+                    f.__next__()
+                data = f.read()
+                data = data.split('\n')  # splitting seperate lines
+                datatemp = [row.split('  ') for row in data]  # removing blanks
+            if len(datatemp[0]) > 1:
+                data = datatemp
+            else:
+                data = [row.split() for row in data]
+            data.pop()  # remove last useless Array in crv
+            y4 = [float(column[2]) for column in data]  # VGate
+            y5 = [abs(float(column[3])) for column in data]  # IDrain
+
+            rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
+            ax.plot(y4, y5, '.', color=rcolor)
+            ax.set_yscale("log")
+            ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+    for pathtofile in filepathssim:
+            with open(pathtofile) as f:
+                for i in range(2):
+                    f.__next__()
+                data = f.read()
+                data = data.split('\n')  # splitting seperate lines
+                datatemp = [row.split('  ') for row in data]  # removing blanks
+            if len(datatemp[0]) > 1:
+                data = datatemp
+            else:
+                data = [row.split() for row in data]
+            data.pop()  # remove last useless Array in crv
+            y6 = [abs(float(column[0])) for column in data]  # IDrain
+            y7 = [float(column[1]) for column in data]  # VGate
+
+            rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
+            ax.plot(y7, y6, color=rcolor)
+            ax.set_yscale("log")
+            ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+    fig.savefig(path + "Output.png")
+    plt.close(fig)
+
+
+
+
 def autolabel(rects, ax):
     """
     Attach a text label above each bar displaying its height

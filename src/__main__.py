@@ -10,7 +10,7 @@ multipledirpath2 = "../../Batchelor-Arbeit/Messdaten2/"  # path to comparedevice
 
 
 # secondfileplotfunction("../../Batchelor-Arbeit/Messdaten2/chip1/g1/dev99/22C/IDVG/ch1_g1_dev99_idvg_ar_Vd5V.txt")
-secondfilesystemplotfunction('../../Batchelor-Arbeit/Messdaten3_lengthsorted_encapssorted/') # only use when ready Takes on Average 6minutes
+#secondfilesystemplotfunction('../../Batchelor-Arbeit/Messdaten3_lengthsorted_encapssorted/') # only use when ready Takes on Average 6minutes
 
 
 searchstrs = ["-20_20V", "Vd05V", "dark"]
@@ -27,3 +27,6 @@ antisearch = ["logfile", "sweep", "165C"]
 searchstr3 = ["Vd1V"]
 antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis"]
 #secondfit("../../Batchelor-Arbeit/Messdaten3_lengthsorted_encapssorted/", searchstr3, antisearch2)
+
+
+simuplot("../../Batchelor-Arbeit/Plots_Simulation/")
