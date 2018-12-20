@@ -30,3 +30,4 @@ antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis"]
 
 
 simuplot("../../Batchelor-Arbeit/Plots_Simulation/")
+

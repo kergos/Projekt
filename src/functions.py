@@ -1012,6 +1012,7 @@ def simuplot(path):
     filepaths1 = []
     filepaths2 = []
     filepathssim = []
+    minarray = []
     pathmeasure1 = path + "Input_measuretype1"
     pathmeasure2 = path + "Input_measuretype2"
     pathsim = path + "Input_sim"
@@ -1032,6 +1033,9 @@ def simuplot(path):
     plt.tight_layout()
     plt.rcParams['text.latex.preamble'] = [r'\usepackage{helvet}', r'\usepackage{sansmath}', r'\sansmath']
     fig, ax = plt.subplots()
+    ax.grid()
+    ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+    ax.set_yscale("log")
 
     for pathtofile in filepaths1:
         with open(pathtofile) as f:
@@ -1051,13 +1055,13 @@ def simuplot(path):
 
         y2 = [float(column[2]) for column in data]  # VGate
         y3 = [abs(float(column[4])) for column in data]  # IDrain
+        minarray = y3
 
         rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-        ax.plot(y2, y3, '.', color=rcolor)
-        ax.set_yscale("log")
-        ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
-        ax.grid()
-        fig.tight_layout()
+        #print(legendlabel(pathtofile))
+        labelstr = legendlabel1(pathtofile)
+        ax.plot(y2, y3, '.', color=rcolor, label=labelstr)
+
     for pathtofile in filepaths2:
             with open(pathtofile) as f:
                 for i in range(6):
@@ -1072,11 +1076,15 @@ def simuplot(path):
             data.pop()  # remove last useless Array in crv
             y4 = [float(column[2]) for column in data]  # VGate
             y5 = [abs(float(column[3])) for column in data]  # IDrain
+            minarray = y5
 
             rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-            ax.plot(y4, y5, '.', color=rcolor)
-            ax.set_yscale("log")
-            ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+
+            #print(legendlabel(pathtofile))
+            labelstr =legendlabel2(pathtofile)
+            ax.plot(y4, y5, '.', color=rcolor, label=labelstr)
+            #ax.set_yscale("log")
+
     for pathtofile in filepathssim:
             with open(pathtofile) as f:
                 for i in range(2):
@@ -1092,14 +1100,55 @@ def simuplot(path):
             y6 = [abs(float(column[0])) for column in data]  # IDrain
             y7 = [float(column[1]) for column in data]  # VGate
 
+            if minarray:
+                idmin = min(minarray)
+                #print(idmin)
+                #print(np.asarray(y6))
+
+                pos1 = (np.abs(np.asarray(y6) - idmin)).argmin()
+                #print(pos1)
+                off=0
+                #print (y6[pos1])
+                #print(idmin)
+                while y6[pos1-off]/2 < idmin:
+                    off = off + 1
+                #print(off)
+
+                y6 = y6[:pos1+1]
+                y7 = y7[:pos1+1]
+
             rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-            ax.plot(y7, y6, color=rcolor)
-            ax.set_yscale("log")
-            ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
-    fig.savefig(path + "Output.png")
+            labelstr = "Simulated"
+            ax.plot(y7, y6, color=rcolor, label=labelstr)
+            #ax.set_yscale("log")
+            #ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
+    ax.legend(loc=4)
+    fig.savefig(path + "Output.png", bbox_inches="tight")
     plt.close(fig)
 
 
+def legendlabel1(pathtofile):
+    #print(pathtofile)
+    namestr = pathtofile.split("/")
+    frstind = namestr[5].find("dev")
+    frstend = namestr[5].find("_", 8)
+    if frstend < frstind:
+        frstend = namestr[5].find("_", 13)
+    scndind = namestr[5].find("Vd")
+    scndend = namestr[5].find(".crv")
+    return namestr[5][frstind:frstend] + "\_" + namestr[5][scndind:scndend]
+
+
+def legendlabel2(pathtofile):
+    #print(pathtofile)
+    namestr = pathtofile.split("/")
+    frstind = namestr[5].find("dev")
+    frstend = namestr[5].find("_idvg")
+    if frstend == -1:
+        frstend = namestr[5].find("_ar")
+    scndind = namestr[5].find("Vd")
+    scndend = namestr[5].find(".txt")
+    return namestr[5][frstind:frstend] + "\_" + namestr[5][scndind:scndend]
 
 
 def autolabel(rects, ax):
