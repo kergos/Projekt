@@ -528,13 +528,20 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
         #print(filenamerec)
         filepaths.append(filenamerec)
 
-    print(filepaths)
+    #print(filepaths)
     filepaths = sorted(filepaths)       # order list for pretty test printing purposes
     for singlepaths in filepaths:
         if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):  # checks for files with strings
             #print(singlepaths)                                                    # from searchstr and prints them
             if not any(anti in singlepaths for anti in antisearch):
-                foundpaths.append(singlepaths)
+                """if singlepaths.split('/')[6] not in foundpaths:
+                    foundpaths.append(singlepaths)
+                else:
+                    print("double")
+                """
+                if not any((singlepaths.split('/')[6]+"/"+singlepaths.split('/')[7]) in s for s in foundpaths):
+                    foundpaths.append(singlepaths)
+                #print(singlepaths.split('/')[6])
                 #print(singlepaths)
     if not foundpaths:
         print("no filename which contains all keywords was found")
@@ -644,7 +651,11 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.grid()
     # Get Probability Density Function
     mean = np.mean(validfactors)
+    #print(validfactors)
     var = np.var(validfactors)
+
+    if var == 0:
+        var = 1
     pdf = []
     validfactors = sorted(validfactors)
     for xi in validfactors:
@@ -683,6 +694,31 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
                 dpi=300)
     plt.close(fig)
 
+    # Hystogramm over Vthdelta
+    fig, ax = plt.subplots()
+    ax.grid()
+    # Get Probability Density Function
+    # print(validvth1)
+    # print(validvth2)
+    vthdelta = [abs(a - b) for a, b in zip(validvth1, validvth2)]
+    mean = np.mean(vthdelta)
+    var = np.var(vthdelta)
+    # print (vthdelta)
+    pdf = []
+    vthdelta = sorted(vthdelta)
+    if var == 0:
+        var = 1
+    for xi in vthdelta:
+        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
+    ax.plot(vthdelta, pdf, '-.')
+    # now histogramm
+    plt.hist(vthdelta, bins='auto', density=True, facecolor='g', alpha=0.75)
+    ax.set(xlabel='$V_{th\delta} [V]$', ylabel='Probability')
+    # title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
+                + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
+    plt.close(fig)
+
     # Hystogramm over Vth2
     fig, ax = plt.subplots()
     ax.grid()
@@ -691,6 +727,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     var = np.var(validvth2)
     pdf = []
     validvth2 = sorted(validvth2)
+    if var == 0:
+        var = 1
     for xi in validvth2:
         pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
     ax.plot(validvth2, pdf, '-.')
@@ -702,25 +740,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
                 + "_".join(antisearch) + "]_Vth2_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
 
-    # Hystogramm over Vthdelta
-    fig, ax = plt.subplots()
-    ax.grid()
-    # Get Probability Density Function
-    vthdelta = [abs(a-b) for a, b in zip(validvth1, validvth2)]
-    mean = np.mean(vthdelta)
-    var = np.var(vthdelta)
-    pdf = []
-    vthdelta = sorted(vthdelta)
-    for xi in vthdelta:
-        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
-    ax.plot(vthdelta, pdf, '-.')
-    # now histogramm
-    plt.hist(vthdelta, bins='auto', density=True, facecolor='g', alpha=0.75)
-    ax.set(xlabel='$V_{th\delta} [V]$', ylabel='Probability')
-           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
-    fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
-                + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
-    plt.close(fig)
+
 
     # Hystogramm over Gradient
     fig, ax = plt.subplots()
@@ -730,6 +750,8 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     var = np.var(validgrad)
     pdf = []
     validgrad = sorted(validgrad)
+    if var == 0:
+        var = 1
     for xi in validgrad:
         pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
     ax.plot(validgrad, pdf, '-.')
