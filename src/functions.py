@@ -539,10 +539,10 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
                 else:
                     print("double")
                 """
-                if not any((singlepaths.split('/')[6]+"/"+singlepaths.split('/')[7]) in s for s in foundpaths):
-                    foundpaths.append(singlepaths)
-                #print(singlepaths.split('/')[6])
-                #print(singlepaths)
+                #if not any((singlepaths.split('/')[6]+"/"+singlepaths.split('/')[7]) in s for s in foundpaths):
+                #print(singlepaths.split('/')[9][-8:-4])
+                foundpaths.append(singlepaths)
+
     if not foundpaths:
         print("no filename which contains all keywords was found")
         return
@@ -771,6 +771,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 
 # plotting fits
 def plotfit(datasets, searchstrs):
+    #print(searchstrs)
     plt.figure()
     path = "../../Batchelor-Arbeit/Fit-Plots3/"
     t = []
@@ -794,8 +795,6 @@ def plotfit(datasets, searchstrs):
     plt.xticks(np.arange(-25, 25, step=5))
     plt.yticks(np.arange(-14, -1, step=2))
 
-
-
     for j, dataset in enumerate(datasets):
         ypos = -16
         t.append(dataset['T'])
@@ -814,7 +813,7 @@ def plotfit(datasets, searchstrs):
                  horizontalalignment='center', verticalalignment='center')
     #plt.legend(loc=3, bbox_to_anchor=(0.35, -0.4), prop={'size': 14}, borderpad=0.2, labelspacing=0.1)
     plt.legend(bbox_to_anchor=(1.1, -0.2), prop={'size': 14}, borderpad=0.2, labelspacing=0.1)
-    plt.savefig(path + searchstrs + "_IdVg_all.pdf", bbox_inches='tight')
+    plt.savefig(path + searchstrs + "_IdVg_all.png", bbox_inches='tight')
 
     plt.close()
 """
@@ -857,7 +856,8 @@ def secondfit(directorypath, searchstrs, antisearch):
     for singlepaths in filepaths:
         if all(singlesearchstr in singlepaths for singlesearchstr in searchstrs):       # any instead of all
             if not any(anti in singlepaths for anti in antisearch):
-                foundpaths.append(singlepaths)
+                if not any((singlepaths.split('/')[6] + "/" + singlepaths.split('/')[7]) in s for s in foundpaths):
+                    foundpaths.append(singlepaths)
     if not foundpaths:
         print("no filename which contains all keywords was found")
         return
@@ -868,18 +868,19 @@ def secondfit(directorypath, searchstrs, antisearch):
     #print(device)
     for devicepath in foundpaths:
         print(devicepath)
-        #print(devicepath.split("/")[5])
+        #namestr = devicepath.split("/")[4]+"_"+devicepath.split("/")[5]+"_"+searchstrs[0]+"_"+device
+        namestr = devicepath.split("/")[4] + "_"+ searchstrs[0] + "_" + device
         if devicepath.split("/")[6] == device:
             valuelist = secondextractvaluesfromfile(devicepath)
             #print(valuelist)
             datasets.append(valuelist[5])
         else:
-            plotfit(datasets, devicepath.split("/")[4]+"_"+devicepath.split("/")[5]+"_"+searchstrs[0]+"_"+device)
+            plotfit(datasets, namestr)
             datasets.clear()
             device = devicepath.split("/")[6]
             valuelist = secondextractvaluesfromfile(devicepath)
             datasets.append(valuelist[5])
-    plotfit(datasets, devicepath.split("/")[4]+"_"+devicepath.split("/")[5]+"_"+searchstrs[0]+"_"+device)
+    plotfit(datasets, namestr)
 
 
 # multiple plots from one .crv file and creating type2
