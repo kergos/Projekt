@@ -1,6 +1,7 @@
 #from multiprocessing import Pool
 from textwrap import wrap
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 from scipy.constants import k, e
@@ -413,7 +414,8 @@ def secondextractvaluesfromfile(pathtofile):
     # now it uses the last element in the crv which should be the lowest because of hysteresis
     # sadly it is not because in 165C the curve drops off before the hysteresis begins
     #idmin = idr[-1]
-    idmin = min(idr)
+    #idmin = min(idr)
+    idmin = sorted(idr)[2]
     # first we would get treshold at 10% of idr = vth1 but because of mos2-characteristics we now take only 1%
     threshid = 0.01*idmax
 
@@ -598,6 +600,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     validvth2 = []
     validgrad = []
     i = 0
+    count= 0
     for factor in yifactor:
         if factor > 1e3:
             validfactors.append(float(format(factor, ".2e")))   #for better readability in factorgraph
@@ -608,7 +611,9 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             validvth1.append(y1[i])
             validvth2.append(y2[i])
             validgrad.append(y6[i])
+            count +=1
         i += 1
+    print("There were "+str(len(yifactor))+" Devices and "+str(count)+" of them were usable")
     # time measuring start
     start_time = time.time()
 
@@ -630,7 +635,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     fig, ax = plt.subplots()
     ax.set_yscale("log")
     #ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-    fig.set_size_inches(len(x), 10)
+    fig.set_size_inches(len(x)+len(x)/2, 10)
     ax.tick_params(length=3)
     index = np.arange(len(validdevices))
     ax.set_xticks(index)
@@ -658,25 +663,28 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
         var = 1
     pdf = []
     validfactors = sorted(validfactors)
+    #ax.set_xscale("log")
+
+    #ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
+    ax.xaxis.get_major_locator().set_params(nbins=5)
     for xi in validfactors:
         pdf.append(1/(np.sqrt(2*np.pi*var))*np.exp(-np.power((xi-mean), 2)/(2*var)))
     ax.plot(validfactors, pdf, '-.')
     # now histogramm
-    plt.hist(validfactors, bins='auto', density=True, facecolor='orange', alpha=0.75)
+    plt.hist(validfactors, bins='auto', density=True, facecolor='orange', alpha=0.75, log=True)
     ax.set(xlabel='$I_{max}$/$I_{min}$', ylabel='Probability')
-           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
-    ax.set_xscale("log")
+
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Imax_Imin_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
 
     # Vth1_Vth2 Plot
     fig, ax = plt.subplots()
-    fig.set_size_inches(len(x), 10)
+    fig.set_size_inches(len(x)+len(x)/3, 10)
     index = np.arange(len(validdevices))
-    rect1 = ax.bar(index, validvth1, barwidth, alpha=opacity, color='b',
+    rect1 = ax.bar(index, np.around(validvth1, decimals=2), barwidth, alpha=opacity, color='b',
                    error_kw=error_config, label='$V_{th1}$')
-    rect2 = ax.bar(index+barwidth, validvth2, barwidth,  alpha=opacity, color='g',
+    rect2 = ax.bar(index+barwidth, np.around(validvth2, decimals=2), barwidth,  alpha=opacity, color='g',
                    error_kw=error_config, label='$V_{th2}$')
     ax.set_xticks(index + barwidth / 2)
     ax.set_xticklabels(validdevices)
@@ -1180,7 +1188,7 @@ def autolabel(rects, ax):
     """
     for rect in rects:
         height = rect.get_height()
-        ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+        ax.text(rect.get_x() + rect.get_width()/2., height*1.05,
                 '%g' % height,
                 ha='center', va='bottom')
 
