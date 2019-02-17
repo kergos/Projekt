@@ -5,6 +5,9 @@ import matplotlib.ticker as ticker
 from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 from scipy.constants import k, e
+from scipy import stats
+from scipy import special
+from scipy import integrate
 import os
 import glob
 import time
@@ -503,7 +506,7 @@ def secondextractvaluesfromfile(pathtofile):
         bakestat = ""
     slim = T * k / e * np.log(10)
     # Calculate Ct cox = epser/thickness
-    cox = 3.9/90e-9
+    cox = 3.9/25e-9
     # slope/slim = (ct+cox)/cox
     ct = ((slope/slim)*cox)-cox
     # Get Vd from path
@@ -541,9 +544,10 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
                 else:
                     print("double")
                 """
-                #if not any((singlepaths.split('/')[6]+"/"+singlepaths.split('/')[7]) in s for s in foundpaths):
+                ### remove multiple measuring ###
+                if not any((singlepaths.split('/')[6]+"/"+singlepaths.split('/')[7]) in s for s in foundpaths):
                 #print(singlepaths.split('/')[9][-8:-4])
-                foundpaths.append(singlepaths)
+                    foundpaths.append(singlepaths)
 
     if not foundpaths:
         print("no filename which contains all keywords was found")
@@ -612,8 +616,10 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
             validvth2.append(y2[i])
             validgrad.append(y6[i])
             count +=1
+        else:
+            print("unusable :" +foundpaths[i])
         i += 1
-    print("There were "+str(len(yifactor))+" Devices and "+str(count)+" of them were usable")
+    print("There were "+str(len(yifactor))+" Devices and "+str(count)+" of them were useable")
     # time measuring start
     start_time = time.time()
 
@@ -633,8 +639,7 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
 
 
     fig, ax = plt.subplots()
-    ax.set_yscale("log")
-    #ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+
     fig.set_size_inches(len(x)+len(x)/2, 10)
     ax.tick_params(length=3)
     index = np.arange(len(validdevices))
@@ -643,10 +648,11 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     rects = ax.bar(index, validfactors, barwidth, alpha=opacity, color='orange',
                    error_kw=error_config)
     ax.set(xlabel='Devices', ylabel='$I_{max}$/$I_{min}$')
-           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     ax.grid()
     autolabel(rects, ax)
-
+    ax.set_yscale("log")
+    yscale = np.array([1000, 10000, 100000, 1000000, 10000000])
+    ax.set_yticks(yscale)
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Imax_Imin.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -656,23 +662,34 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     ax.grid()
     # Get Probability Density Function
     mean = np.mean(validfactors)
-    #print(validfactors)
     var = np.var(validfactors)
-
-    if var == 0:
-        var = 1
+    stddev = np.std(validfactors)
     pdf = []
-    validfactors = sorted(validfactors)
-    #ax.set_xscale("log")
-
-    #ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
-    ax.xaxis.get_major_locator().set_params(nbins=5)
-    for xi in validfactors:
-        pdf.append(1/(np.sqrt(2*np.pi*var))*np.exp(-np.power((xi-mean), 2)/(2*var)))
-    ax.plot(validfactors, pdf, '-.')
+    validfactors = np.array(sorted(validfactors))
+    #ax.xaxis.get_major_locator().set_params(nbins=5)
+    pdf = stats.norm.pdf(validfactors, mean, stddev)
+    #pmf = 0.5*(1+special.erf((validfactors-mean)/(np.sqrt(2*var))))
+    #ax.plot(validfactors, np.array(pdf / len(validfactors)), '.-')
+    #ax.plot(validfactors, pdf)
+    #print(validfactors)
+    #print(pdf*validfactors)
+    #print(pmf)
     # now histogramm
-    plt.hist(validfactors, bins='auto', density=True, facecolor='orange', alpha=0.75, log=True)
+    #plt.hist(validfactors, bins=5, facecolor='g', alpha=0.75, weights=validfactors/len(validfactors))
+    """uses np.histogramm, then calculates the width of the bins, with that, it calculates the probability 
+    that a value occurs in the bandwidth"""
+    results, edges = np.histogram(validfactors, bins=5, normed=True)
+    binWidth = edges[1] - edges[0]
+    plt.bar(edges[:-1], results * binWidth, binWidth, facecolor='orange')
     ax.set(xlabel='$I_{max}$/$I_{min}$', ylabel='Probability')
+
+    secyax = ax.twinx()
+    secyax.plot(validfactors, pdf)
+    secyax.set_ylabel("Probability Density")
+
+    ax.set_xticks(np.array([500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000]))
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
+
 
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Imax_Imin_Histogram.png", bbox_inches='tight', dpi=300)
@@ -711,16 +728,21 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     vthdelta = [abs(a - b) for a, b in zip(validvth1, validvth2)]
     mean = np.mean(vthdelta)
     var = np.var(vthdelta)
+    stddev = np.std(vthdelta)
     # print (vthdelta)
     pdf = []
-    vthdelta = sorted(vthdelta)
-    if var == 0:
-        var = 1
-    for xi in vthdelta:
-        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
-    ax.plot(vthdelta, pdf, '-.')
-    # now histogramm
-    plt.hist(vthdelta, bins='auto', density=True, facecolor='g', alpha=0.75)
+    vthdelta = np.array(sorted(vthdelta))
+    pdf = stats.norm.pdf(vthdelta, mean, stddev)
+
+    results, edges = np.histogram(vthdelta, bins=5, normed=True)
+    binWidth = edges[1] - edges[0]
+    plt.bar(edges[:-1], results * binWidth, binWidth, facecolor='g')
+
+    secyax = ax.twinx()
+    secyax.plot(vthdelta, pdf)
+    secyax.set_ylabel("Probability Density")
+
+    ax.set_xticks(np.array([0.3, 0.4, 0.5, 0.6, 0.7]))
     ax.set(xlabel='$V_{th\delta} [V]$', ylabel='Probability')
     # title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
@@ -733,15 +755,19 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     # Get Probability Density Function
     mean = np.mean(validvth2)
     var = np.var(validvth2)
+    stddev = np.std(validvth2)
     pdf = []
     validvth2 = sorted(validvth2)
-    if var == 0:
-        var = 1
-    for xi in validvth2:
-        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
-    ax.plot(validvth2, pdf, '-.')
-    # now histogramm
-    plt.hist(validvth2, bins='auto', density=True, facecolor='g', alpha=0.75)
+    pdf = stats.norm.pdf(validvth2, mean, stddev)
+
+    results, edges = np.histogram(validvth2, bins=5, normed=True)
+    binWidth = edges[1] - edges[0]
+    plt.bar(edges[:-1], results * binWidth, binWidth, facecolor='g')
+
+    secyax = ax.twinx()
+    secyax.plot(validvth2, pdf)
+    secyax.set_ylabel("Probability Density")
+
     ax.set(xlabel='$V_{th2} [V]$', ylabel='Probability')
            #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
@@ -756,15 +782,24 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     # Get Probability Density Function
     mean = np.mean(validgrad)
     var = np.var(validgrad)
+    stddev = np.std(validgrad)
     pdf = []
     validgrad = sorted(validgrad)
-    if var == 0:
-        var = 1
-    for xi in validgrad:
-        pdf.append(1 / (np.sqrt(2 * np.pi * var)) * np.exp(-np.power((xi - mean), 2) / (2 * var)))
-    ax.plot(validgrad, pdf, '-.')
+    stddev = np.std(validgrad)
+    pdf = stats.norm.pdf(validgrad, mean, stddev)
+    #ax.plot(validgrad, pdf, '-.')
     # now histogramm
-    plt.hist(validgrad, bins='auto', density=True, facecolor='g', alpha=0.75)
+    #plt.hist(validgrad, bins='auto', density=True, facecolor='c', alpha=0.75)
+
+    results, edges = np.histogram(validgrad, bins=5, normed=True)
+    binWidth = edges[1] - edges[0]
+    plt.bar(edges[:-1], results * binWidth, binWidth, facecolor='c')
+
+    secyax = ax.twinx()
+    secyax.plot(validgrad, pdf)
+    secyax.set_ylabel("Probability Density")
+
+    ax.set_xticks(np.array([1200, 1300, 1400, 1500, 1600, 1700]))
     ax.set(xlabel='Gradient [mV/dec]', ylabel='Probability')
            #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
@@ -1188,7 +1223,10 @@ def autolabel(rects, ax):
     """
     for rect in rects:
         height = rect.get_height()
-        ax.text(rect.get_x() + rect.get_width()/2., height*1.05,
+        #ax.text(rect.get_x() + rect.get_width()/2., height*1.05,
+        #        '%g' % height,
+        #        ha='center', va='bottom')
+        ax.text(rect.get_x() + rect.get_width() / 2., height + (height*0.02),
                 '%g' % height,
                 ha='center', va='bottom')
 
