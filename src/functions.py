@@ -686,9 +686,11 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     secyax = ax.twinx()
     secyax.plot(validfactors, pdf)
     secyax.set_ylabel("Probability Density")
-
-    ax.set_xticks(np.array([500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000]))
-    plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
+    #print(validfactors)
+    if all(i < 3500000 for i in validfactors):
+        ax.set_xticks(np.array([500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000]))
+        print("no imax/imin factor bigger than 3500000")
+    plt.ticklabel_format(style='sci', axis='both', scilimits=(0, 0))
 
 
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
@@ -737,14 +739,20 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     results, edges = np.histogram(vthdelta, bins=5, normed=True)
     binWidth = edges[1] - edges[0]
     plt.bar(edges[:-1], results * binWidth, binWidth, facecolor='g')
-
+    #print(pdf)
+    #print(vthdelta)
     secyax = ax.twinx()
     secyax.plot(vthdelta, pdf)
     secyax.set_ylabel("Probability Density")
 
-    ax.set_xticks(np.array([0.3, 0.4, 0.5, 0.6, 0.7]))
+    if all(i < 0.9 for i in vthdelta):
+        ax.set_xticks(np.array([0.2, 0.3, 0.4, 0.5, 0.6, 0.7]))
+        print("no vthdelta bigger than 0.9V")
     ax.set(xlabel='$V_{th\delta} [V]$', ylabel='Probability')
     # title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vthdelta_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -769,7 +777,9 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     secyax.set_ylabel("Probability Density")
 
     ax.set(xlabel='$V_{th2} [V]$', ylabel='Probability')
-           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Vth2_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
@@ -799,9 +809,14 @@ def secondcomparedevices(directorypath, searchstrs, antisearch):
     secyax.plot(validgrad, pdf)
     secyax.set_ylabel("Probability Density")
 
-    ax.set_xticks(np.array([1200, 1300, 1400, 1500, 1600, 1700]))
+    if all(i < 1750 for i in validgrad):
+        ax.set_xticks(np.array([1200, 1300, 1400, 1500, 1600, 1700]))
+        print("no grad bigger than 1700mV")
+
     ax.set(xlabel='Gradient [mV/dec]', ylabel='Probability')
-           #title=nameofnewfile[:-4] + "_no[" + "_".join(antisearch) + "]" + "\n")
+
+    plt.ticklabel_format(style='sci', axis='both', scilimits=(0, 0))
+
     fig.savefig(temppath + directorypath.split('/')[4] + "_" + nameofnewfile[:-4] + "_no["
                 + "_".join(antisearch) + "]_Gradient_Histogram.png", bbox_inches='tight', dpi=300)
     plt.close(fig)
