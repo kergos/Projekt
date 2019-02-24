@@ -20,7 +20,7 @@ searchstrs = ["-20_20V", "Vd05V", "dark"]
 
 searchstr2 = ["4um", "Vd3V", "encapsulated", "IDVG", "baked"]
 antisearch = ["logfile", "sweep"]
-secondcomparedevices("../../Batchelor-Arbeit/Messdaten3_lengthsorted_encapssorted/", searchstr2, antisearch)
+#secondcomparedevices("../../Batchelor-Arbeit/Messdaten3_lengthsorted_encapssorted/", searchstr2, antisearch)
 
 
 # removed condition that all searchstr must be in path for multiple device handling for secondfit
@@ -29,5 +29,5 @@ antisearch2 = ["logfile", "sweep", "PBTI", "NBTI", "IDVD", "hysteresis"]
 #secondfit("../../Batchelor-Arbeit/Messdaten3_lengthsorted_encapssorted/", searchstr3, antisearch2)
 
 
-#simuplot("../../Batchelor-Arbeit/Plots_Simulation/")
+simuplot("../../Batchelor-Arbeit/Plots_Simulation/")
 

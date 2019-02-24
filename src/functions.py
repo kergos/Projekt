@@ -1138,10 +1138,14 @@ def simuplot(path):
         y3 = [abs(float(column[4])) for column in data]  # IDrain
         minarray = y3
 
-        rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-        #print(legendlabel(pathtofile))
-        labelstr = legendlabel1(pathtofile)
-        ax.plot(y2, y3, '.', color=rcolor, label=labelstr)
+        color = '#0e5bd6'
+
+        if "165" in pathtofile:
+            color = '#cc0a0a'
+        if "baked" in pathtofile:
+            color = '#800ed1'
+
+        ax.plot(y2, y3, '.', color=color)
 
     for pathtofile in filepaths2:
             with open(pathtofile) as f:
@@ -1159,11 +1163,13 @@ def simuplot(path):
             y5 = [abs(float(column[3])) for column in data]  # IDrain
             minarray = y5
 
-            rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
+            color = '#0e5bd6'
 
-            #print(legendlabel(pathtofile))
-            labelstr =legendlabel2(pathtofile)
-            ax.plot(y4, y5, '.', color=rcolor, label=labelstr)
+            if "165" in pathtofile:
+                color = '#cc0a0a'
+            if "baked" in pathtofile:
+                color = '#800ed1'
+            ax.plot(y4, y5, '.', color=color)
             #ax.set_yscale("log")
 
     for pathtofile in filepathssim:
@@ -1183,28 +1189,37 @@ def simuplot(path):
 
             if minarray:
                 idmin = min(minarray)
-                #print(idmin)
-                #print(np.asarray(y6))
-
                 pos1 = (np.abs(np.asarray(y6) - idmin)).argmin()
-                #print(pos1)
-                off=0
-                #print (y6[pos1])
-                #print(idmin)
-                while y6[pos1-off]/2 < idmin:
-                    off = off + 1
+                #print(y6)
+                #print(y7)
+
+                while idmin > (min(y6)*10):
+                    #print(idmin)
+                    #print("größer als")
+                    #print(min(y6)*100)
+                    y6.remove(min(y6))
+                    y7.remove(min(y7))
+                    #print("duat")
+
                 #print(off)
+                #off=0
+                #while y6[pos1-off]/2 < idmin:
+                #    off = off + 1
+                #y6 = y6[:pos1+1]
+                #y7 = y7[:pos1+1]
 
-                y6 = y6[:pos1+1]
-                y7 = y7[:pos1+1]
+            color = '#083072'
 
-            rcolor = ('#%02X%02X%02X' % (randint(), randint(), randint()))
-            labelstr = "Simulated"
-            ax.plot(y7, y6, color=rcolor, label=labelstr)
+            if "165" in pathtofile:
+                color = '#630606'
+            if "baked" in pathtofile:
+                color = '#450870'
+
+            ax.plot(y7, y6, '-', color=color)
             #ax.set_yscale("log")
             #ax.set(xlabel='$V_{BG}$ [V]', ylabel='$I_{DS}$ [A]')
-    ax.legend(loc=4)
-    fig.savefig(path + "Output.png", bbox_inches="tight")
+    #ax.legend(loc=4)
+    fig.savefig(path + "Output.png", bbox_inches="tight", dpi=900)
     plt.close(fig)
 
 
